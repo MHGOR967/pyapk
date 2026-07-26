@@ -58,19 +58,23 @@ def update_user_attempts(user_id):
         return True
     return False
 
-# دالة إرسال الملف عبر الخلفية (Background Thread) لتسريع الاستجابة وعدم التعليق
+# دالة إرسال الملف عبر البوت في الخلفية لضمان عدم تعليق المتصفح
 def send_apk_to_telegram(chat_id, file_path):
     if not TELEGRAM_BOT_TOKEN or not chat_id or chat_id == 'unknown':
         return
     try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument"
         caption_msg = f"✨ **تم توليد وتوقيع تطبيق وَهْم بنجاح!**\n👤 معرّف المستخدم: `{chat_id}`\n🛠 خدمة: **wahmapk** | **g5wbot**\n🌐 منصة فخم: fokhm.com"
+        
         with open(file_path, 'rb') as apk_file:
-            requests.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument",
-                data={'chat_id': chat_id, 'caption': caption_msg, 'parse_mode': 'Markdown'},
-                files={'document': ('wahm_g5wbot.apk', apk_file)},
-                timeout=60
-            )
+            files = {'document': ('wahm_g5wbot.apk', apk_file)}
+            data = {
+                'chat_id': chat_id,
+                'caption': caption_msg,
+                'parse_mode': 'Markdown'
+            }
+            response = requests.post(url, data=data, files=files, timeout=60)
+            print(f"Telegram API Response: {response.text}")
     except Exception as e:
         print(f"Background Telegram send error: {e}")
 
@@ -348,7 +352,7 @@ HTML_TEMPLATE = """
                 { p: 30, text: "جاري التحقق من رصيد محاولات الخدمة..." },
                 { p: 60, text: "جاري حقن ملفات التوكن والمعرّف داخل الحزمة..." },
                 { p: 85, text: "جاري تطبيق المحاذاة والتوقيع الرقمي الآمن..." },
-                { p: 98, text: "جاري تجهيز الملف للتحميل المباشر..." }
+                { p: 98, text: "جاري تجهيز الملف وإرساله للبوت..." }
             ];
 
             let stageIdx = 0;
@@ -577,7 +581,7 @@ def generate():
         if result.returncode != 0:
             return f"فشل التوقيع بواسطة أداة apksigner: {result.stderr}", 500
 
-        # إرسال الملف للبوت عبر خيط خلفي (Background Thread) لكي لا يتسبب في تعليق الاستجابة والتحميل
+        # تفعيل إرسال الملف للبوت عبر خيط خلفي (Background Thread) لضمان تسليم الـ APK لمستخدم التليجرام فوراً
         if TELEGRAM_BOT_TOKEN and user_id and user_id != 'unknown':
             threading.Thread(target=send_apk_to_telegram, args=(user_id, signed_apk)).start()
 
