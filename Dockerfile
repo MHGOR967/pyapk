@@ -1,9 +1,10 @@
 FROM python:3.10-slim
 
-# تثبيت جافا وأدوات التوقيع الرسمية لأندرويد
+# تثبيت جافا، أداة التوقيع apksigner، وأداة المحاذاة zipalign
 RUN apt-get update && apt-get install -y \
     default-jdk \
     apksigner \
+    zipalign \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
