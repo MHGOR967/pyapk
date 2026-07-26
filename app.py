@@ -42,7 +42,7 @@ HTML_TEMPLATE = """
 
         <div id="loading" class="hidden text-center mt-4">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-amber-500 border-t-transparent"></div>
-            <p class="text-xs text-amber-400 mt-2">جارٍ تعديل التطبيق ومحاذاته وتوقيعه، انتظر قليلاً...</p>
+            <p class="text-xs text-amber-400 mt-2">جارٍ حقن التوكن وتوقيع التطبيق، انتظر قليلاً...</p>
         </div>
     </div>
 
@@ -70,42 +70,50 @@ def generate():
     if not os.path.exists(BASE_APK):
         return "خطأ: ملف التطبيق الأساسي (wahm.apk) غير موجود على السيرفر!", 500
 
-    extracted_dir = os.path.join(UPLOAD_FOLDER, 'extracted')
-    unsigned_apk = os.path.join(UPLOAD_FOLDER, 'wahm_unsigned.apk')
+    modified_apk = os.path.join(UPLOAD_FOLDER, 'wahm_modified.apk')
     aligned_apk = os.path.join(UPLOAD_FOLDER, 'wahm_aligned.apk')
     signed_apk = os.path.join(UPLOAD_FOLDER, 'wahm_signed.apk')
 
     try:
-        # تنظيف الملفات القديمة إن وجدت
-        for f in [unsigned_apk, aligned_apk, signed_apk]:
+        # تنظيف الملفات القديمة
+        for f in [modified_apk, aligned_apk, signed_apk]:
             if os.path.exists(f):
                 os.remove(f)
 
-        # 1. فك ضغط ملف الـ APK
-        with zipfile.ZipFile(BASE_APK, 'r') as zip_ref:
-            zip_ref.extractall(extracted_dir)
+        # 1. نسخ التطبيق الأصلي للعمل عليه
+        os.system(f"cp {BASE_APK} {modified_apk}")
 
-        # 2. تعديل أو إنشاء ملف token.txt داخل مسار assets
-        assets_dir = os.path.join(extracted_dir, 'assets')
-        os.makedirs(assets_dir, exist_ok=True)
-        token_path = os.path.join(assets_dir, 'token.txt')
+        # 2. تعديل أو حقن ملف token.txt داخل الـ APK مباشرة بدون فك ضغط كامل
+        # مسار الملف داخل الـ APK سيكون assets/token.txt
+        target_in_zip = 'assets/token.txt'
         
-        with open(token_path, 'w', encoding='utf-8') as f:
-            f.write(token_text)
+        # قراءة محتويات ملف الـ ZIP وتحديث الملف المستهدف
+        temp_zip = os.path.join(UPLOAD_FOLDER, 'temp.zip')
+        with zipfile.ZipFile(modified_apk, 'r') as zin:
+            with zipfile.ZipFile(temp_zip, 'w') as zout:
+                file_exists = False
+                for item in zin.infolist():
+                    # نتخلص من التوقيع القديم إن وجد لكي لا يتعارض مع التوقيع الجديد
+                    if item.filename.startswith('META-INF/'):
+                        continue
+                    if item.filename == target_in_zip:
+                        file_exists = True
+                        # كتابة التوكن الجديد
+                        zout.writestr(item, token_text.encode('utf-8'))
+                    else:
+                        zout.writestr(item, zin.read(item.filename))
+                
+                # إذا لم يكن ملف الtoken موجود مسبقاً، نقوم بإضافته
+                if not file_exists:
+                    zout.writestr(target_in_zip, token_text.encode('utf-8'))
 
-        # 3. إعادة ضغط الملفات إلى APK جديد (غير موقع) بدون META-INF القديم
-        with zipfile.ZipFile(unsigned_apk, 'w', zipfile.ZIP_DEFLATED) as zip_out:
-            for foldername, subfolders, filenames in os.walk(extracted_dir):
-                for filename in filenames:
-                    filepath = os.path.join(foldername, filename)
-                    arcname = os.path.relpath(filepath, extracted_dir)
-                    if not arcname.startswith('META-INF'):
-                        zip_out.write(filepath, arcname)
+        # استبدال الملف المعدل
+        os.replace(temp_zip, modified_apk)
 
-        # 4. تطبيق محاذاة الملفات (zipalign) - خطوة إجبارية قبل التوقيع الحديث
-        subprocess.run(['zipalign', '-v', '-p', '4', unsigned_apk, aligned_apk], check=True)
+        # 3. محاذاة الملف (zipalign)
+        subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check=True)
 
-        # 5. توليد مفتاح التوقيع تلقائياً إن لم يكن موجوداً
+        # 4. توليد مفتاح التوقيع إن لم يكن موجوداً
         global KEYSTORE
         if not os.path.exists(KEYSTORE):
             subprocess.run([
@@ -120,7 +128,7 @@ def generate():
                 '-dname', 'CN=Fokhm, OU=Dev, O=Fokhm, L=Riyadh, S=Riyadh, C=SA'
             ], check=True)
 
-        # 6. توقيع التطبيق بصيغ v2 و v3 الحديثة عبر apksigner (بدون v4 لتجنب مشاكل الخوادم)
+        # 5. التوقيع بأحدث خوارزميات الـ v2 و v3 عبر apksigner
         sign_cmd = [
             'apksigner', 'sign',
             '--ks', KEYSTORE,
@@ -130,15 +138,18 @@ def generate():
             aligned_apk,
             signed_apk
         ]
-        subprocess.run(sign_cmd, check=True)
+        
+        # تنفيذ التوقيع مع التقاط الخطأ بدقة لو ظهر
+        result = subprocess.run(sign_cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            return f"فشل التوقيع بواسطة أداة apksigner: {result.stderr}", 500
 
-        # 7. إرسال التطبيق الموقع للتحميل المباشر
+        # 6. إرسال التطبيق النهائي الجاهز للتحميل
         return send_file(signed_apk, as_attachment=True, download_name='wahm_customized.apk')
 
-    except subprocess.CalledProcessError as e:
-        return f"خطأ في تنفيذ أدوات النظام (Subprocess): {str(e)}", 500
     except Exception as e:
         return f"حدث خطأ أثناء المعالجة: {str(e)}", 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
