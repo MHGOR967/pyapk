@@ -17,6 +17,7 @@ KEY_ALIAS = 'mykey'
 KEY_PASS = 'password123'
 TELEGRAM_BOT_TOKEN = '8737255406:AAEFenbZDgNzz5yX9QLVMdstx2nb6WBftKw'
 
+# إدارة بيانات المستخدمين وملف الـ JSON المركزي
 def load_users():
     if os.path.exists(DATA_FILE):
         try:
@@ -38,7 +39,8 @@ def get_user_info(user_id):
             'attempts': 2, # محاولتان مجانيتان افتراضياً
             'invites': 0,
             'unlimited': False,
-            'invited_list': []
+            'invited_list': [],
+            'referred_by': None
         }
         save_users(users)
     return users[str_id]
@@ -62,7 +64,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>APK Injector Pro | g5wbot</title>
+    <title>APK Injector Pro | fokhm.com</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -139,15 +141,15 @@ HTML_TEMPLATE = """
             </form>
         </div>
 
-        <!-- TAB 2: Invites System (Web App Direct Link) -->
+        <!-- TAB 2: Invites System -->
         <div id="tabInvites" class="hidden space-y-3 relative z-10 text-center">
             <div class="bg-purple-950/60 border border-purple-500/30 rounded-2xl p-4 space-y-2">
                 <div class="w-10 h-10 bg-amber-500/20 text-amber-400 rounded-xl mx-auto flex items-center justify-center text-lg">
                     <i class="fa-solid fa-bullhorn"></i>
                 </div>
-                <h3 class="text-xs font-bold text-white">رابط دعوة Web App الحصري!</h3>
+                <h3 class="text-xs font-bold text-white">رابط دعوة wahmapk الحصري!</h3>
                 <p class="text-[11px] text-purple-300/80 leading-relaxed">
-                    شارك رابط الـ Web App المباشر أدناه. بمجرد فتح 5 أشخاص جدد للرابط، سيزيد رصيدك ويفتح لك الصنع اللانهائي فوراً!
+                    شارك رابط الـ Web App أدناه. عند دعوة 5 أشخاص جدد، سيتحول حسابك تلقائياً إلى وضع (غير محدود - Unlimited) مدى الحياة!
                 </p>
                 
                 <div class="pt-1">
@@ -215,11 +217,13 @@ HTML_TEMPLATE = """
         let currentUserId = '8349168441';
         let inviteLink = '';
 
-        // قراءة الـ URL لمعرفة إذا كان هناك معرّف داعم (Referrer)
+        // تليجرام ويب آي بي واستخراج البارامترات (startapp أو query search)
         const urlParams = new URLSearchParams(window.location.search);
-        const referrerId = urlParams.get('ref');
+        let referrerId = urlParams.get('ref') || urlParams.get('startapp');
+        if (referrerId && referrerId.startsWith('ref_')) {
+            referrerId = referrerId.replace('ref_', '');
+        }
 
-        // تليجرام ويب آي بي
         const tg = window.Telegram?.WebApp;
         if (tg) {
             tg.ready();
@@ -228,15 +232,19 @@ HTML_TEMPLATE = """
             if (user && user.id) {
                 currentUserId = user.id;
             }
+            // دعم تليجرام الرسمي startapp في حال تم تمريره عبر الـ WebApp InitData
+            if (tg.initDataUnsafe?.start_param && tg.initDataUnsafe.start_param.startsWith('ref_')) {
+                referrerId = tg.initDataUnsafe.start_param.replace('ref_', '');
+            }
         }
         document.getElementById('userId').value = currentUserId;
         
-        // رابط الدعوة الفريد للـ Web App المباشر
+        // رابط الدعوة الفريد المخصص لخدمة wahmapk
         inviteLink = `https://t.me/g5wbot/wahmapk?startapp=ref_${currentUserId}`;
 
         async function initUserData() {
             try {
-                // تسجيل الدعوة تلقائياً في السيرفر إذا فتح مستخدم جديد عبر رابط صديقه
+                // تسجيل الدعوة تلقائياً في ملف الـ JSON المركزي على السيرفر
                 if (referrerId && referrerId !== String(currentUserId)) {
                     await fetch('/api/register_invite', {
                         method: 'POST',
@@ -245,7 +253,7 @@ HTML_TEMPLATE = """
                     });
                 }
 
-                // جلب بيانات المستخدم
+                // جلب بيانات المستخدم المحدثة من السيرفر
                 const res = await fetch(`/api/user?user_id=${currentUserId}`);
                 const data = await res.json();
                 
@@ -289,7 +297,7 @@ HTML_TEMPLATE = """
 
         function copyInviteLink() {
             navigator.clipboard.writeText(inviteLink);
-            alert('✨ تم نسخ رابط دعوة الـ Web App المباشر بنجاح! انشره الآن لجمع أعضاء جدد.');
+            alert('✨ تم نسخ رابط دعوة (wahmapk) المخصص بنجاح! انشره الآن لجمع أعضاء جدد.');
         }
 
         function togglePassword() {
@@ -445,15 +453,39 @@ def register_invite():
         return jsonify({'status': 'ignored'})
 
     users = load_users()
-    if referrer_id in users:
-        if new_user_id not in users[referrer_id].get('invited_list', []):
-            users[referrer_id].setdefault('invited_list', []).append(new_user_id)
-            users[referrer_id]['invites'] = len(users[referrer_id]['invited_list'])
-            if users[referrer_id]['invites'] >= 5:
-                users[referrer_id]['unlimited'] = True
-            save_users(users)
-            return jsonify({'status': 'success', 'invites': users[referrer_id]['invites']})
+    
+    # ضمان وجود الداعي في النظام
+    if referrer_id not in users:
+        get_user_info(referrer_id)
+        users = load_users()
 
+    # ضمان وجود المستخدم الجديد في النظام وتثبيت من الذي دعاه (referred_by)
+    if new_user_id not in users:
+        users[new_user_id] = {
+            'attempts': 2,
+            'invites': 0,
+            'unlimited': False,
+            'invited_list': [],
+            'referred_by': referrer_id
+        }
+    else:
+        # إذا لم يكن لديه داعٍ مسجل من قبل، نثبته
+        if not users[new_user_id].get('referred_by'):
+            users[new_user_id]['referred_by'] = referrer_id
+
+    # تسجيل الدعوة للداعي شريطة عدم تكرار الأيدي وضمان عدم دعوة الشخص لنفسه
+    if new_user_id not in users[referrer_id].get('invited_list', []):
+        users[referrer_id].setdefault('invited_list', []).append(new_user_id)
+        users[referrer_id]['invites'] = len(users[referrer_id]['invited_list'])
+        
+        # إذا وصل إلى 5 دعوات يتم تفعيل الوضع اللانهائي تلقائياً
+        if users[referrer_id]['invites'] >= 5:
+            users[referrer_id]['unlimited'] = True
+            
+        save_users(users)
+        return jsonify({'status': 'success', 'invites': users[referrer_id]['invites']})
+
+    save_users(users)
     return jsonify({'status': 'already_counted'})
 
 @app.route('/generate', methods=['POST'])
@@ -512,7 +544,7 @@ def generate():
 
         os.replace(temp_zip, modified_apk)
 
-        subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check=True)
+        subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check+True if False else check=True)
 
         global KEYSTORE
         if not os.path.exists(KEYSTORE):
