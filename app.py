@@ -93,15 +93,14 @@ HTML_TEMPLATE = """
             <p class="text-[11px] text-purple-300/80">منصة فخم الماسية لتخصيص وتوقيع تطبيقات وَهْم</p>
         </div>
 
-        <!-- User Stats & Attempts Card -->
+        <!-- User Info Card -->
         <div class="bg-purple-950/50 border border-purple-500/30 rounded-2xl p-3.5 relative z-10 flex items-center justify-between shadow-inner">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-300">
-                    <i class="fa-solid fa-user-shield text-base"></i>
-                </div>
+                <img id="userProfilePic" class="w-10 h-10 rounded-full border-2 border-purple-400 object-cover" src="https://via.placeholder.com/40" alt="User Profile">
                 <div>
-                    <span class="text-[10px] text-purple-300/70 block">حالة الحساب</span>
-                    <span id="accountStatusText" class="text-xs font-bold text-amber-400">جارِ التحقق...</span>
+                    <span id="userNameDisplay" class="text-xs font-bold text-white block">جارِ التحقق...</span>
+                    <span id="userUsernameDisplay" class="text-[10px] text-purple-300/70 block"></span>
+                    <span id="userIdDisplay" class="text-[9px] text-purple-400/50 block"></span>
                 </div>
             </div>
             <div class="text-left">
@@ -252,11 +251,22 @@ HTML_TEMPLATE = """
                 const res = await fetch(`/api/user?user_id=${currentUserId}`);
                 const data = await res.json();
                 
+                if (tg && tg.initDataUnsafe?.user) {
+                    const user = tg.initDataUnsafe.user;
+                    document.getElementById('userNameDisplay').innerText = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+                    document.getElementById('userUsernameDisplay').innerText = user.username ? `@${user.username}` : '';
+                    document.getElementById('userIdDisplay').innerText = `ID: ${user.id}`;
+                    if (user.photo_url) {
+                        document.getElementById('userProfilePic').src = user.photo_url;
+                    }
+                } else {
+                    document.getElementById('userNameDisplay').innerText = 'مستخدم غير معروف';
+                    document.getElementById('userIdDisplay').innerText = `ID: ${currentUserId}`;
+                }
+
                 if (data.unlimited) {
-                    document.getElementById('accountStatusText').innerText = 'حساب غير محدود (VIP)';
                     document.getElementById('attemptsBadge').innerText = '∞ لامحدود';
                 } else {
-                    document.getElementById('accountStatusText').innerText = 'حساب تجريبي';
                     document.getElementById('attemptsBadge').innerText = data.attempts + ' محاولات';
                 }
 
