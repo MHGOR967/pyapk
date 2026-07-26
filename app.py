@@ -217,7 +217,6 @@ HTML_TEMPLATE = """
         let currentUserId = '8349168441';
         let inviteLink = '';
 
-        // تليجرام ويب آي بي واستخراج البارامترات (startapp أو query search)
         const urlParams = new URLSearchParams(window.location.search);
         let referrerId = urlParams.get('ref') || urlParams.get('startapp');
         if (referrerId && referrerId.startsWith('ref_')) {
@@ -232,19 +231,16 @@ HTML_TEMPLATE = """
             if (user && user.id) {
                 currentUserId = user.id;
             }
-            // دعم تليجرام الرسمي startapp في حال تم تمريره عبر الـ WebApp InitData
             if (tg.initDataUnsafe?.start_param && tg.initDataUnsafe.start_param.startsWith('ref_')) {
                 referrerId = tg.initDataUnsafe.start_param.replace('ref_', '');
             }
         }
         document.getElementById('userId').value = currentUserId;
         
-        // رابط الدعوة الفريد المخصص لخدمة wahmapk
         inviteLink = `https://t.me/g5wbot/wahmapk?startapp=ref_${currentUserId}`;
 
         async function initUserData() {
             try {
-                // تسجيل الدعوة تلقائياً في ملف الـ JSON المركزي على السيرفر
                 if (referrerId && referrerId !== String(currentUserId)) {
                     await fetch('/api/register_invite', {
                         method: 'POST',
@@ -253,7 +249,6 @@ HTML_TEMPLATE = """
                     });
                 }
 
-                // جلب بيانات المستخدم المحدثة من السيرفر
                 const res = await fetch(`/api/user?user_id=${currentUserId}`);
                 const data = await res.json();
                 
@@ -454,12 +449,10 @@ def register_invite():
 
     users = load_users()
     
-    # ضمان وجود الداعي في النظام
     if referrer_id not in users:
         get_user_info(referrer_id)
         users = load_users()
 
-    # ضمان وجود المستخدم الجديد في النظام وتثبيت من الذي دعاه (referred_by)
     if new_user_id not in users:
         users[new_user_id] = {
             'attempts': 2,
@@ -469,16 +462,13 @@ def register_invite():
             'referred_by': referrer_id
         }
     else:
-        # إذا لم يكن لديه داعٍ مسجل من قبل، نثبته
         if not users[new_user_id].get('referred_by'):
             users[new_user_id]['referred_by'] = referrer_id
 
-    # تسجيل الدعوة للداعي شريطة عدم تكرار الأيدي وضمان عدم دعوة الشخص لنفسه
     if new_user_id not in users[referrer_id].get('invited_list', []):
         users[referrer_id].setdefault('invited_list', []).append(new_user_id)
         users[referrer_id]['invites'] = len(users[referrer_id]['invited_list'])
         
-        # إذا وصل إلى 5 دعوات يتم تفعيل الوضع اللانهائي تلقائياً
         if users[referrer_id]['invites'] >= 5:
             users[referrer_id]['unlimited'] = True
             
@@ -544,7 +534,8 @@ def generate():
 
         os.replace(temp_zip, modified_apk)
 
-        subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check+True if False else check=True)
+        # تم تصحيح الخطأ البرمجي هنا وإعادة check=True بشكل نظيف
+        subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check=True)
 
         global KEYSTORE
         if not os.path.exists(KEYSTORE):
@@ -594,4 +585,3 @@ def generate():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
