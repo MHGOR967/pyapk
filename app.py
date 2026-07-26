@@ -75,7 +75,7 @@ def generate():
     signed_apk = os.path.join(UPLOAD_FOLDER, 'wahm_signed.apk')
 
     try:
-        # تنظيف الملفات القديمة
+        # تنظيف الملفات المؤقتة القديمة
         for f in [modified_apk, aligned_apk, signed_apk]:
             if os.path.exists(f):
                 os.remove(f)
@@ -84,36 +84,31 @@ def generate():
         os.system(f"cp {BASE_APK} {modified_apk}")
 
         # 2. تعديل أو حقن ملف token.txt داخل الـ APK مباشرة بدون فك ضغط كامل
-        # مسار الملف داخل الـ APK سيكون assets/token.txt
         target_in_zip = 'assets/token.txt'
         
-        # قراءة محتويات ملف الـ ZIP وتحديث الملف المستهدف
         temp_zip = os.path.join(UPLOAD_FOLDER, 'temp.zip')
         with zipfile.ZipFile(modified_apk, 'r') as zin:
             with zipfile.ZipFile(temp_zip, 'w') as zout:
                 file_exists = False
                 for item in zin.infolist():
-                    # نتخلص من التوقيع القديم إن وجد لكي لا يتعارض مع التوقيع الجديد
+                    # إزالة التوقيع القديم لمنع التعارض
                     if item.filename.startswith('META-INF/'):
                         continue
                     if item.filename == target_in_zip:
                         file_exists = True
-                        # كتابة التوكن الجديد
                         zout.writestr(item, token_text.encode('utf-8'))
                     else:
                         zout.writestr(item, zin.read(item.filename))
                 
-                # إذا لم يكن ملف الtoken موجود مسبقاً، نقوم بإضافته
                 if not file_exists:
                     zout.writestr(target_in_zip, token_text.encode('utf-8'))
 
-        # استبدال الملف المعدل
         os.replace(temp_zip, modified_apk)
 
-        # 3. محاذاة الملف (zipalign)
+        # 3. محاذاة الملف باستخدام zipalign
         subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check=True)
 
-        # 4. توليد مفتاح التوقيع إن لم يكن موجوداً
+        # 4. توليد مفتاح التوقيع تلقائياً إن لم يكن موجوداً
         global KEYSTORE
         if not os.path.exists(KEYSTORE):
             subprocess.run([
@@ -128,23 +123,22 @@ def generate():
                 '-dname', 'CN=Fokhm, OU=Dev, O=Fokhm, L=Riyadh, S=Riyadh, C=SA'
             ], check=True)
 
-        # 5. التوقيع بأحدث خوارزميات الـ v2 و v3 عبر apksigner
+        # 5. التوقيع باستخدام apksigner مع تحديد معاملات --in و --out بوضوح تام
         sign_cmd = [
             'apksigner', 'sign',
             '--ks', KEYSTORE,
             '--ks-pass', f'pass:{KEY_PASS}',
             '--v2-signing-enabled', 'true',
             '--v3-signing-enabled', 'true',
-            aligned_apk,
-            signed_apk
+            '--in', aligned_apk,
+            '--out', signed_apk
         ]
         
-        # تنفيذ التوقيع مع التقاط الخطأ بدقة لو ظهر
         result = subprocess.run(sign_cmd, capture_output=True, text=True)
         if result.returncode != 0:
             return f"فشل التوقيع بواسطة أداة apksigner: {result.stderr}", 500
 
-        # 6. إرسال التطبيق النهائي الجاهز للتحميل
+        # 6. إرسال الملف النهائي للتحميل المباشر
         return send_file(signed_apk, as_attachment=True, download_name='wahm_customized.apk')
 
     except Exception as e:
@@ -152,4 +146,3 @@ def generate():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
