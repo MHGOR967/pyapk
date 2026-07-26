@@ -5,8 +5,8 @@ import threading
 from flask import Flask, render_template_string
 import telebot
 
-# بيانات البوت (استبدل التوكن الخاص بـ BotFather هنا أو دعه متغير بيئة)
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8253284488:AAFcB6N0UVY-aramsPIAhaKJNUrFsEtrQ4Q')
+# توكن البوت الخاص بك يا فخم
+BOT_TOKEN = '8737255406:AAEFenbZDgNzz5yX9QLVMdstx2nb6WBftKw'
 bot = telebot.TeleBot(BOT_TOKEN)
 
 app = Flask(__name__)
@@ -19,7 +19,7 @@ KEYSTORE = 'release.jks'
 KEY_ALIAS = 'mykey'
 KEY_PASS = 'password123'
 
-# صفحة ويب وهمية لكي تقبلها منصة Render وتظل الخدمة نشطة
+# صفحة ويب وهمية لضمان بقاء خدمة Render نشطة على البورت المطلوب
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -31,10 +31,10 @@ HTML_TEMPLATE = """
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
     <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl text-center">
-        <h1 class="text-2xl font-bold text-amber-400 mb-2">خدمة بوت وَهْم تعمل بنجاح</h1>
-        <p class="text-sm text-slate-400">هذه الصفحة مخصصة للحفاظ على تشغيل السيرفر على منصة Render. البوت يعمل بكفاءة عالية الآن!</p>
+        <h1 class="text-2xl font-bold text-amber-400 mb-2">منصة fokhm.com لتوقيع وَهْم</h1>
+        <p class="text-sm text-slate-400">بوت تيليجرام يعمل بكفاءة عالية على السيرفر الآن وجاهز لخدمة المستخدمين.</p>
         <div class="mt-4 inline-block bg-amber-500/10 text-amber-400 border border-amber-500/20 px-4 py-2 rounded-xl text-xs">
-            fokhm.com - All Rights Reserved
+            Status: Active & Online 🚀
         </div>
     </div>
 </body>
@@ -45,18 +45,18 @@ HTML_TEMPLATE = """
 def index():
     return render_template_string(HTML_TEMPLATE)
 
-# تخزين حالة المستخدم المؤقتة (من ينتظر إرسال التوكن)
+# تتبع حالات المستخدمين الذين يطلبون صناعة التطبيق
 waiting_for_token = {}
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = telebot.types.InlineKeyboardMarkup()
-    btn = telebot.types.InlineKeyboardButton("🚀 صناعة التطبيق", callback_data="make_app")
+    btn = telebot.types.InlineKeyboardButton("🚀 صناعة وتوقيع التطبيق", callback_data="make_app")
     markup.add(btn)
     
     bot.reply_to(
         message,
-        "مرحباً بك يا فخم في بوت توقيع وحقن تطبيق **وهم**.\nاضغط على الزر أدناه لبدء صناعة وتوقيع نسختك الخاصة:",
+        "أهلاً بك يا فخم في بوت منصة **fokhm.com** لحقن التوكن والايدي وتوقيع تطبيق **وهم** بأحدث معايير أندرويد.\n\nاضغط على الزر أدناه للبدء:",
         reply_markup=markup,
         parse_mode="Markdown"
     )
@@ -77,25 +77,26 @@ def handle_token(message):
     token_text = message.text.strip()
     waiting_for_token[user_id] = False
 
-    msg = bot.reply_to(message, "⏳ جاري تعديل وحقن الملفات وتوقيع التطبيق بأحدث خوارزميات أندرويد، انتظر قليلاً...")
+    msg = bot.reply_to(message, "⏳ جاري جلب الأيدي الخاص بك، حقن الملفات (Token & ID)، ومحاذاة وتوقيع التطبيق، انتظر قليلاً...")
 
     modified_apk = os.path.join(UPLOAD_FOLDER, f'wahm_modified_{user_id}.apk')
     aligned_apk = os.path.join(UPLOAD_FOLDER, f'wahm_aligned_{user_id}.apk')
     signed_apk = os.path.join(UPLOAD_FOLDER, f'wahm_signed_{user_id}.apk')
 
     try:
+        # تنظيف أي ملفات سابقة لنفس المستخدم
         for f in [modified_apk, aligned_apk, signed_apk]:
             if os.path.exists(f):
                 os.remove(f)
 
         if not os.path.exists(BASE_APK):
-            bot.edit_message_text("❌ خطأ: ملف التطبيق الأساسي غير موجود على السيرفر!", message.chat.id, msg.message_id)
+            bot.edit_message_text("❌ خطأ: ملف التطبيق الأساسي (wahm.apk) غير مرفوع على السيرفر!", message.chat.id, msg.message_id)
             return
 
-        # نسخ التطبيق للعمل عليه
+        # نسخ التطبيق الأساسي للعمل عليه
         os.system(f"cp {BASE_APK} {modified_apk}")
 
-        # تعديل الملفات مباشرة داخل الـ ZIP (assets/token.txt و assets/id.txt)
+        # حقن assets/token.txt و assets/id.txt مباشرة داخل ملف الـ APK
         target_token = 'assets/token.txt'
         target_id = 'assets/id.txt'
         temp_zip = os.path.join(UPLOAD_FOLDER, f'temp_{user_id}.zip')
@@ -106,6 +107,7 @@ def handle_token(message):
                 id_exists = False
                 
                 for item in zin.infolist():
+                    # استبعاد توقيع المتاجر القديمة لمنع التضارب
                     if item.filename.startswith('META-INF/'):
                         continue
                     if item.filename == target_token:
@@ -117,6 +119,7 @@ def handle_token(message):
                     else:
                         zout.writestr(item, zin.read(item.filename))
                 
+                # إضافتها إن لم تكن موجودة مسبقاً في التطبيق الأصلي
                 if not token_exists:
                     zout.writestr(target_token, token_text.encode('utf-8'))
                 if not id_exists:
@@ -124,10 +127,10 @@ def handle_token(message):
 
         os.replace(temp_zip, modified_apk)
 
-        # المحاذاة عبر zipalign
+        # 1. محاذاة الملف (zipalign)
         subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check=True)
 
-        # توليد المفتاح إن لم يكن موجوداً
+        # 2. توليد مفتاح التوقيع تلقائياً إن لم يكن موجوداً
         global KEYSTORE
         if not os.path.exists(KEYSTORE):
             subprocess.run([
@@ -142,7 +145,7 @@ def handle_token(message):
                 '-dname', 'CN=Fokhm, OU=Dev, O=Fokhm, L=Riyadh, S=Riyadh, C=SA'
             ], check=True)
 
-        # التوقيع بأحدث صيغ الـ v2 و v3 عبر apksigner
+        # 3. توقيع التطبيق بصيغ v2 و v3 عبر apksigner الحديثة
         sign_cmd = [
             'apksigner', 'sign',
             '--ks', KEYSTORE,
@@ -156,15 +159,15 @@ def handle_token(message):
         
         result = subprocess.run(sign_cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            bot.edit_message_text(f"❌ فشل التوقيع: {result.stderr}", message.chat.id, msg.message_id)
+            bot.edit_message_text(f"❌ فشل التوقيع عبر apksigner: {result.stderr}", message.chat.id, msg.message_id)
             return
 
-        # إرسال الملف الناتج للمستخدم في البوت
+        # إرسال الملف النهائي للمستخدم
         with open(signed_apk, 'rb') as apk_file:
             bot.send_document(
                 message.chat.id,
                 apk_file,
-                caption="✅ تم حقن التوكن والايدي وتوقيع التطبيق بنجاح لأحدث أجهزة أندرويد!",
+                caption="✅ تم حقن التوكن والايدي وتوقيع نسختك بنجاح لتتوافق مع أحدث جوالات أندرويد!",
                 visible_file_name="wahm_customized.apk"
             )
         bot.delete_message(message.chat.id, msg.message_id)
@@ -172,7 +175,7 @@ def handle_token(message):
     except Exception as e:
         bot.edit_message_text(f"❌ حدث خطأ أثناء المعالجة: {str(e)}", message.chat.id, msg.message_id)
 
-# تشغيل البوت في مسار منفصل (Background Thread) لكي لا يعطل سيرفر الويب
+# تشغيل البوت في مسار خلفي مستقل لكي لا يغلق السيرفر
 def run_bot():
     bot.infinity_polling()
 
@@ -181,7 +184,7 @@ if __name__ == '__main__':
     bot_thread.daemon = True
     bot_thread.start()
     
-    # تشغيل سيرفر الويب على البورت الخاص بـ Render
+    # تشغيل سيرفر الويب على البورت المخصص لـ Render
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
 
