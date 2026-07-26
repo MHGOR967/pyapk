@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# تثبيت جافا، أدوات التوقيع والمحاذاة
+# تثبيت جافا، أداة التوقيع apksigner، وأداة المحاذاة zipalign
 RUN apt-get update && apt-get install -y \
     default-jdk \
     apksigner \
