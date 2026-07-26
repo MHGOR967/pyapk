@@ -21,7 +21,6 @@ KEYSTORE = 'release.jks'
 KEY_ALIAS = 'mykey'
 KEY_PASS = 'password123'
 
-# صفحة ويب وهمية يستقبل عليها رابط الـ Keep-Alive لتبقى الخدمة نشطة ولا تنام
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -34,9 +33,9 @@ HTML_TEMPLATE = """
 <body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
     <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl text-center">
         <h1 class="text-2xl font-bold text-amber-400 mb-2">منصة fokhm.com لتوقيع وَهْم</h1>
-        <p class="text-sm text-slate-400">السيرفر يعمل بكفاءة وجاهز لاستقبال طلبات الـ Keep-Alive والبوت يعمل بنظام Polling.</p>
+        <p class="text-sm text-slate-400">السيرفر والبوت يعملان مباشرة وبدون وسيط لضمان الاستجابة الفورية.</p>
         <div class="mt-4 inline-block bg-amber-500/10 text-amber-400 border border-amber-500/20 px-4 py-2 rounded-xl text-xs">
-            Status: Keep-Alive Active & Online 🚀
+            Status: Direct Process Online 🚀
         </div>
     </div>
 </body>
@@ -51,7 +50,7 @@ waiting_for_token = {}
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    logging.info(f"تم استقبال /start من المستخدم: {message.from_user.id}")
+    logging.info(f"تم استقبال أمر /start بنجاح من المستخدم: {message.from_user.id}")
     markup = telebot.types.InlineKeyboardMarkup()
     btn = telebot.types.InlineKeyboardButton("🚀 صناعة وتوقيع التطبيق", callback_data="make_app")
     markup.add(btn)
@@ -169,14 +168,16 @@ def handle_token(message):
         bot.edit_message_text(f"❌ حدث خطأ أثناء المعالجة: {str(e)}", message.chat.id, msg.message_id)
 
 def run_bot():
-    logging.info("بدء تشغيل البوت بنظام Polling...")
+    logging.info("بدء تشغيل البوت بنظام Polling المباشر...")
     bot.infinity_polling(skip_pending=True)
 
 if __name__ == '__main__':
+    # تشغيل البوت في مسار خلفي
     bot_thread = threading.Thread(target=run_bot)
     bot_thread.daemon = True
     bot_thread.start()
     
+    # تشغيل سيرفر الويب المباشر المخصص للبورت في Render
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
 
