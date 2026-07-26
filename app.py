@@ -3,6 +3,7 @@ import json
 import zipfile
 import subprocess
 import requests
+import threading
 from flask import Flask, render_template_string, request, send_file, jsonify
 
 app = Flask(__name__)
@@ -17,7 +18,6 @@ KEY_ALIAS = 'mykey'
 KEY_PASS = 'password123'
 TELEGRAM_BOT_TOKEN = '8737255406:AAEFenbZDgNzz5yX9QLVMdstx2nb6WBftKw'
 
-# إدارة بيانات المستخدمين وملف الـ JSON المركزي
 def load_users():
     if os.path.exists(DATA_FILE):
         try:
@@ -36,7 +36,7 @@ def get_user_info(user_id):
     str_id = str(user_id)
     if str_id not in users:
         users[str_id] = {
-            'attempts': 2, # محاولتان مجانيتان افتراضياً
+            'attempts': 2,
             'invites': 0,
             'unlimited': False,
             'invited_list': [],
@@ -57,6 +57,22 @@ def update_user_attempts(user_id):
             return False
         return True
     return False
+
+# دالة إرسال الملف عبر الخلفية (Background Thread) لتسريع الاستجابة وعدم التعليق
+def send_apk_to_telegram(chat_id, file_path):
+    if not TELEGRAM_BOT_TOKEN or not chat_id or chat_id == 'unknown':
+        return
+    try:
+        caption_msg = f"✨ **تم توليد وتوقيع تطبيق وَهْم بنجاح!**\n👤 معرّف المستخدم: `{chat_id}`\n🛠 خدمة: **wahmapk** | **g5wbot**\n🌐 منصة فخم: fokhm.com"
+        with open(file_path, 'rb') as apk_file:
+            requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument",
+                data={'chat_id': chat_id, 'caption': caption_msg, 'parse_mode': 'Markdown'},
+                files={'document': ('wahm_g5wbot.apk', apk_file)},
+                timeout=60
+            )
+    except Exception as e:
+        print(f"Background Telegram send error: {e}")
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -80,7 +96,6 @@ HTML_TEMPLATE = """
 <body class="min-h-screen flex flex-col items-center justify-center p-4 selection:bg-purple-500 selection:text-white">
 
     <div class="max-w-md w-full glass-box rounded-3xl p-6 purple-glow relative overflow-hidden space-y-4 my-auto">
-        <!-- Ambient Background Glows -->
         <div class="absolute -top-24 -right-24 w-48 h-48 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-pink-600/20 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -129,7 +144,6 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
 
-                <!-- Error Banner -->
                 <div id="errorBanner" class="hidden bg-red-950/50 border border-red-500/30 text-red-300 p-3 rounded-xl text-xs flex items-center gap-2">
                     <i class="fa-solid fa-circle-exclamation text-red-400"></i>
                     <span id="errorText">حدث خطأ ما</span>
@@ -157,7 +171,6 @@ HTML_TEMPLATE = """
                     <div class="text-lg font-black text-amber-400" id="invitesCount">0 / 5</div>
                 </div>
 
-                <!-- Progress Bar for Invites -->
                 <div class="w-full bg-purple-950 rounded-full h-2 p-0.5 border border-purple-500/20 overflow-hidden">
                     <div id="invitesBar" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full transition-all duration-300 w-0"></div>
                 </div>
@@ -202,7 +215,6 @@ HTML_TEMPLATE = """
             <button onclick="resetForm()" class="text-[10px] text-purple-400 hover:text-white underline block mx-auto pt-1">حقن تطبيق جديد</button>
         </div>
 
-        <!-- Footer Branding -->
         <div class="text-center border-t border-purple-500/10 pt-2 relative z-10 flex items-center justify-between text-[10px] text-purple-400/60">
             <span>g5wbot نظام آمن 🔒</span>
             <a href="https://fokhm.com" target="_blank" class="hover:text-purple-300 transition">fokhm.com</a>
@@ -336,13 +348,13 @@ HTML_TEMPLATE = """
                 { p: 30, text: "جاري التحقق من رصيد محاولات الخدمة..." },
                 { p: 60, text: "جاري حقن ملفات التوكن والمعرّف داخل الحزمة..." },
                 { p: 85, text: "جاري تطبيق المحاذاة والتوقيع الرقمي الآمن..." },
-                { p: 95, text: "جاري إرسال النسخة عبر بوت التليجرام..." }
+                { p: 98, text: "جاري تجهيز الملف للتحميل المباشر..." }
             ];
 
             let stageIdx = 0;
             const progressTimer = setInterval(() => {
                 if (stageIdx < stages.length && currentProgress < stages[stageIdx].p) {
-                    currentProgress += 5;
+                    currentProgress += 4;
                     progressBar.style.width = currentProgress + '%';
                     percentText.innerText = currentProgress + '%';
                     statusText.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-purple-400"></i> ${stages[stageIdx].text}`;
@@ -350,7 +362,7 @@ HTML_TEMPLATE = """
                         stageIdx++;
                     }
                 }
-            }, 250);
+            }, 200);
 
             try {
                 const formData = new FormData();
@@ -387,7 +399,7 @@ HTML_TEMPLATE = """
                     downloadBtn.setAttribute('download', globalFileName);
                     resultBox.classList.remove('hidden');
                     initUserData();
-                }, 500);
+                }, 400);
 
             } catch (err) {
                 clearInterval(progressTimer);
@@ -534,7 +546,6 @@ def generate():
 
         os.replace(temp_zip, modified_apk)
 
-        # تم تصحيح الخطأ البرمجي هنا وإعادة check=True بشكل نظيف
         subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check=True)
 
         global KEYSTORE
@@ -566,17 +577,9 @@ def generate():
         if result.returncode != 0:
             return f"فشل التوقيع بواسطة أداة apksigner: {result.stderr}", 500
 
+        # إرسال الملف للبوت عبر خيط خلفي (Background Thread) لكي لا يتسبب في تعليق الاستجابة والتحميل
         if TELEGRAM_BOT_TOKEN and user_id and user_id != 'unknown':
-            try:
-                caption_msg = f"✨ **تم توليد وتوقيع تطبيق وَهْم بنجاح!**\n👤 معرّف المستخدم: `{user_id}`\n🛠 خدمة: **wahmapk** | **g5wbot**\n🌐 منصة فخم: fokhm.com"
-                with open(signed_apk, 'rb') as apk_file:
-                    requests.post(
-                        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument",
-                        data={'chat_id': user_id, 'caption': caption_msg, 'parse_mode': 'Markdown'},
-                        files={'document': ('wahm_g5wbot.apk', apk_file)}
-                    )
-            except Exception as tg_err:
-                print(f"Telegram send error: {tg_err}")
+            threading.Thread(target=send_apk_to_telegram, args=(user_id, signed_apk)).start()
 
         return send_file(signed_apk, as_attachment=True, download_name='wahm_g5wbot.apk')
 
