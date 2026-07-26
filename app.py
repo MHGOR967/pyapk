@@ -1,11 +1,10 @@
 import os
 import zipfile
 import subprocess
-from flask import Flask, render_template_string, request, send_file, redirect, url_for
+from flask import Flask, render_template_string, request, send_file
 
 app = Flask(__name__)
 
-# مجلدات مؤقتة للعمليات
 UPLOAD_FOLDER = 'temp'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -14,7 +13,6 @@ KEYSTORE = 'release.jks'
 KEY_ALIAS = 'mykey'
 KEY_PASS = 'password123'
 
-# صفحة الواجهة الأمامية التصميم الفخم
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -44,7 +42,7 @@ HTML_TEMPLATE = """
 
         <div id="loading" class="hidden text-center mt-4">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-amber-500 border-t-transparent"></div>
-            <p class="text-xs text-amber-400 mt-2">جارٍ تعديل التطبيق وتوقيعه بأحدث خوارزميات الأندرويد، انتظر قليلاً...</p>
+            <p class="text-xs text-amber-400 mt-2">جارٍ تعديل التطبيق ومحاذاته وتوقيعه، انتظر قليلاً...</p>
         </div>
     </div>
 
@@ -73,9 +71,16 @@ def generate():
         return "خطأ: ملف التطبيق الأساسي (wahm.apk) غير موجود على السيرفر!", 500
 
     extracted_dir = os.path.join(UPLOAD_FOLDER, 'extracted')
-    modified_apk = os.path.join(UPLOAD_FOLDER, 'wahm_signed.apk')
+    unsigned_apk = os.path.join(UPLOAD_FOLDER, 'wahm_unsigned.apk')
+    aligned_apk = os.path.join(UPLOAD_FOLDER, 'wahm_aligned.apk')
+    signed_apk = os.path.join(UPLOAD_FOLDER, 'wahm_signed.apk')
 
     try:
+        # تنظيف الملفات القديمة إن وجدت
+        for f in [unsigned_apk, aligned_apk, signed_apk]:
+            if os.path.exists(f):
+                os.remove(f)
+
         # 1. فك ضغط ملف الـ APK
         with zipfile.ZipFile(BASE_APK, 'r') as zip_ref:
             zip_ref.extractall(extracted_dir)
@@ -88,21 +93,19 @@ def generate():
         with open(token_path, 'w', encoding='utf-8') as f:
             f.write(token_text)
 
-        # 3. إعادة ضغط الملفات إلى APK جديد (غير موقع)
-        unsigned_apk = os.path.join(UPLOAD_FOLDER, 'wahm_unsigned.apk')
-        if os.path.exists(unsigned_apk):
-            os.remove(unsigned_apk)
-
+        # 3. إعادة ضغط الملفات إلى APK جديد (غير موقع) بدون META-INF القديم
         with zipfile.ZipFile(unsigned_apk, 'w', zipfile.ZIP_DEFLATED) as zip_out:
             for foldername, subfolders, filenames in os.walk(extracted_dir):
                 for filename in filenames:
                     filepath = os.path.join(foldername, filename)
                     arcname = os.path.relpath(filepath, extracted_dir)
-                    # استبعاد مجلد التوقيعات القديمة إن وجدت لتجنب التضارب
                     if not arcname.startswith('META-INF'):
                         zip_out.write(filepath, arcname)
 
-        # التأكد من وجود مفتاح توقيع، وإن لم يوجد يتم توليده تلقائياً
+        # 4. تطبيق محاذاة الملفات (zipalign) - خطوة إجبارية قبل التوقيع الحديث
+        subprocess.run(['zipalign', '-v', '-p', '4', unsigned_apk, aligned_apk], check=True)
+
+        # 5. توليد مفتاح التوقيع تلقائياً إن لم يكن موجوداً
         global KEYSTORE
         if not os.path.exists(KEYSTORE):
             subprocess.run([
@@ -117,26 +120,23 @@ def generate():
                 '-dname', 'CN=Fokhm, OU=Dev, O=Fokhm, L=Riyadh, S=Riyadh, C=SA'
             ], check=True)
 
-        # تنظيف ملف التوقيع القديم إن وجد
-        if os.path.exists(modified_apk):
-            os.remove(modified_apk)
-        os.system(f"cp {unsigned_apk} {modified_apk}")
-
-        # 4. توقيع التطبيق بأحدث صيغ التوقيع (v2, v3, v4) عبر apksigner
+        # 6. توقيع التطبيق بصيغ v2 و v3 الحديثة عبر apksigner (بدون v4 لتجنب مشاكل الخوادم)
         sign_cmd = [
             'apksigner', 'sign',
             '--ks', KEYSTORE,
             '--ks-pass', f'pass:{KEY_PASS}',
             '--v2-signing-enabled', 'true',
             '--v3-signing-enabled', 'true',
-            '--v4-signing-enabled', 'true',
-            modified_apk
+            aligned_apk,
+            signed_apk
         ]
         subprocess.run(sign_cmd, check=True)
 
-        # 5. إرسال الملف النهائي للتحميل المباشر
-        return send_file(modified_apk, as_attachment=True, download_name='wahm_customized.apk')
+        # 7. إرسال التطبيق الموقع للتحميل المباشر
+        return send_file(signed_apk, as_attachment=True, download_name='wahm_customized.apk')
 
+    except subprocess.CalledProcessError as e:
+        return f"خطأ في تنفيذ أدوات النظام (Subprocess): {str(e)}", 500
     except Exception as e:
         return f"حدث خطأ أثناء المعالجة: {str(e)}", 500
 
