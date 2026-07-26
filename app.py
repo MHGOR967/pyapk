@@ -42,7 +42,7 @@ HTML_TEMPLATE = """
 
         <div id="loading" class="hidden text-center mt-4">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-amber-500 border-t-transparent"></div>
-            <p class="text-xs text-amber-400 mt-2">جارٍ حقن التوكن وتوقيع التطبيق، انتظر قليلاً...</p>
+            <p class="text-xs text-amber-400 mt-2">جارٍ حقن التوكن وتوقيع التطبيق بنجاح، انتظر قليلاً...</p>
         </div>
     </div>
 
@@ -83,15 +83,15 @@ def generate():
         # 1. نسخ التطبيق الأصلي للعمل عليه
         os.system(f"cp {BASE_APK} {modified_apk}")
 
-        # 2. تعديل أو حقن ملف token.txt داخل الـ APK مباشرة بدون فك ضغط كامل
+        # 2. حقن ملف token.txt داخل مسار assets في الـ APK مباشرة بدون فك ضغط كامل
         target_in_zip = 'assets/token.txt'
-        
         temp_zip = os.path.join(UPLOAD_FOLDER, 'temp.zip')
+        
         with zipfile.ZipFile(modified_apk, 'r') as zin:
             with zipfile.ZipFile(temp_zip, 'w') as zout:
                 file_exists = False
                 for item in zin.infolist():
-                    # إزالة التوقيع القديم لمنع التعارض
+                    # استبعاد التوقيع القديم لمنع تضارب الشهادات
                     if item.filename.startswith('META-INF/'):
                         continue
                     if item.filename == target_in_zip:
@@ -105,7 +105,7 @@ def generate():
 
         os.replace(temp_zip, modified_apk)
 
-        # 3. محاذاة الملف باستخدام zipalign
+        # 3. محاذاة الملف باستخدام zipalign (خطوة إجبارية)
         subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check=True)
 
         # 4. توليد مفتاح التوقيع تلقائياً إن لم يكن موجوداً
@@ -123,11 +123,12 @@ def generate():
                 '-dname', 'CN=Fokhm, OU=Dev, O=Fokhm, L=Riyadh, S=Riyadh, C=SA'
             ], check=True)
 
-        # 5. التوقيع باستخدام apksigner مع تحديد معاملات --in و --out بوضوح تام
+        # 5. التوقيع باستخدام apksigner مع تمرير --min-sdk-version لتجاوز أي مشاكل قراءة للمانفست
         sign_cmd = [
             'apksigner', 'sign',
             '--ks', KEYSTORE,
             '--ks-pass', f'pass:{KEY_PASS}',
+            '--min-sdk-version', '21',
             '--v2-signing-enabled', 'true',
             '--v3-signing-enabled', 'true',
             '--in', aligned_apk,
@@ -138,7 +139,7 @@ def generate():
         if result.returncode != 0:
             return f"فشل التوقيع بواسطة أداة apksigner: {result.stderr}", 500
 
-        # 6. إرسال الملف النهائي للتحميل المباشر
+        # 6. إرسال التطبيق النهائي للتحميل المباشر
         return send_file(signed_apk, as_attachment=True, download_name='wahm_customized.apk')
 
     except Exception as e:
@@ -146,3 +147,4 @@ def generate():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
