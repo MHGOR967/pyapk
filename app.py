@@ -63,7 +63,7 @@ def send_apk_to_telegram(chat_id, file_path):
         return
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument"
-        caption_msg = f"✨ **تم توليد وتوقيع تطبيق وَهْم بنجاح!**\n👤 معرّف المستخدم: `{chat_id}`\n🛠 خدمة: **wahmapk** | **g5wbot**\n🌐 منصة فخم: fokhm.com"
+        caption_msg = f"✨ **تم توليد وتوقيع تطبيق وَهْم بنجاح لصالح منصة fokhm.com!**\n👤 معرّف المستخدم: `{chat_id}`\n🛠 خدمة: **wahmapk** | **g5wbot**"
         
         with open(file_path, 'rb') as apk_file:
             files = {'document': ('wahm_customized.apk', apk_file)}
@@ -107,7 +107,7 @@ HTML_TEMPLATE = """
                 <i class="fa-solid fa-wand-magic-sparkles"></i>
             </div>
             <h1 class="text-xl font-black text-white tracking-wide">APK Injector Pro</h1>
-            <p class="text-[11px] text-purple-300/80">منصة فخم الماسية لتخصيص وتوقيع تطبيقات وَهْم</p>
+            <p class="text-[11px] text-purple-300/80">منصة فخم الماسية لتخصيص وتوقيع تطبيقات وَهْم — fokhm.com</p>
         </div>
 
         <!-- User Stats Card -->
@@ -128,10 +128,9 @@ HTML_TEMPLATE = """
         </div>
 
         <!-- Navigation Tabs -->
-        <div class="grid grid-cols-3 gap-1.5 bg-purple-950/40 p-1 rounded-2xl border border-purple-500/25 relative z-10 text-center">
-            <button onclick="switchTab('generator')" id="tabGenBtn" class="py-2 text-[11px] font-bold rounded-xl transition bg-purple-600 text-white shadow">الأساسي</button>
-            <button onclick="switchTab('advanced')" id="tabAdvBtn" class="py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white">التعديلات ⚙️</button>
-            <button onclick="switchTab('invites')" id="tabInvBtn" class="py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white">الدعوات 🔥</button>
+        <div class="grid grid-cols-2 gap-2 bg-purple-950/40 p-1 rounded-2xl border border-purple-500/25 relative z-10 text-center">
+            <button onclick="switchTab('generator')" id="tabGenBtn" class="py-2 text-xs font-bold rounded-xl transition bg-purple-600 text-white shadow">صنع وتوقيع</button>
+            <button onclick="switchTab('invites')" id="tabInvBtn" class="py-2 text-xs font-bold rounded-xl transition text-purple-300 hover:text-white">نظام الدعوات 🔥</button>
         </div>
 
         <!-- MAIN FORM -->
@@ -147,18 +146,30 @@ HTML_TEMPLATE = """
                         </button>
                     </div>
                 </div>
-            </div>
 
-            <!-- TAB 2: Advanced Customizations (URL Injection) -->
-            <div id="tabAdvanced" class="hidden space-y-3">
-                <div>
-                    <label class="block text-xs font-bold text-purple-200 mb-1.5 mr-1"><i class="fa-solid fa-link text-purple-400 ml-1"></i> رابط التطبيق (assets/url.txt):</label>
-                    <input type="url" id="appUrl" name="app_url" class="w-full bg-purple-950/60 border border-purple-500/30 rounded-2xl p-3 text-xs text-white focus:outline-none focus:border-purple-400 transition placeholder:text-purple-400/40 shadow-inner" placeholder="https://example.com (اختياري)">
-                    <span class="text-[10px] text-purple-400/70 mt-1 block pr-1">سيتم حقنه تلقائياً في مسار assets/url.txt داخل الحزمة.</span>
+                <!-- Toggle Button for Advanced Settings -->
+                <div class="pt-1">
+                    <button type="button" onclick="toggleAdvancedSettings()" class="w-full bg-purple-900/40 hover:bg-purple-900/70 text-purple-200 border border-purple-500/25 rounded-xl py-2 px-3 text-xs font-semibold flex items-center justify-between transition">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-amber-400"></i> المزيد من الإعدادات (رابط الواجهة الأساسية)
+                        </span>
+                        <i class="fa-solid fa-chevron-down transition-transform duration-300" id="arrowIcon"></i>
+                    </button>
+                </div>
+
+                <!-- Collapsible Advanced Section -->
+                <div id="advancedSection" class="hidden space-y-2.5 bg-purple-950/40 border border-purple-500/20 rounded-2xl p-3 animate-fade-in">
+                    <div>
+                        <label class="block text-[11px] font-bold text-purple-200 mb-1 mr-1">
+                            <i class="fa-solid fa-link text-purple-400 ml-1"></i> أضف رابط الموقع (واجهة التطبيق الأساسية):
+                        </label>
+                        <input type="url" id="appUrl" name="app_url" class="w-full bg-purple-950/80 border border-purple-500/30 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-purple-400 transition placeholder:text-purple-400/40 shadow-inner" placeholder="https://example.com">
+                        <span class="text-[10px] text-purple-400/70 mt-1 block pr-1">سيتم حقنه تلقائياً في مسار assets/url.txt داخل الحزمة.</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- TAB 3: Invites System -->
+            <!-- TAB 2: Invites System -->
             <div id="tabInvites" class="hidden space-y-3 text-center">
                 <div class="bg-purple-950/60 border border-purple-500/30 rounded-2xl p-4 space-y-2">
                     <div class="w-10 h-10 bg-amber-500/20 text-amber-400 rounded-xl mx-auto flex items-center justify-center text-lg">
@@ -287,30 +298,30 @@ HTML_TEMPLATE = """
         }
         initUserData();
 
+        function toggleAdvancedSettings() {
+            const section = document.getElementById('advancedSection');
+            const arrow = document.getElementById('arrowIcon');
+            section.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        }
+
         function switchTab(tab) {
             const genTab = document.getElementById('tabGenerator');
-            const advTab = document.getElementById('tabAdvanced');
             const invTab = document.getElementById('tabInvites');
             const genBtn = document.getElementById('tabGenBtn');
-            const advBtn = document.getElementById('tabAdvBtn');
             const invBtn = document.getElementById('tabInvBtn');
 
             genTab.classList.add('hidden');
-            advTab.classList.add('hidden');
             invTab.classList.add('hidden');
-            genBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white';
-            advBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white';
-            invBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white';
+            genBtn.className = 'py-2 text-xs font-bold rounded-xl transition text-purple-300 hover:text-white';
+            invBtn.className = 'py-2 text-xs font-bold rounded-xl transition text-purple-300 hover:text-white';
 
             if (tab === 'generator') {
                 genTab.classList.remove('hidden');
-                genBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition bg-purple-600 text-white shadow';
-            } else if (tab === 'advanced') {
-                advTab.classList.remove('hidden');
-                advBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition bg-purple-600 text-white shadow';
+                genBtn.className = 'py-2 text-xs font-bold rounded-xl transition bg-purple-600 text-white shadow';
             } else {
                 invTab.classList.remove('hidden');
-                invBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition bg-purple-600 text-white shadow';
+                invBtn.className = 'py-2 text-xs font-bold rounded-xl transition bg-purple-600 text-white shadow';
             }
         }
 
@@ -358,7 +369,7 @@ HTML_TEMPLATE = """
 
             const stages = [
                 { p: 30, text: "جاري التحقق من الرصيد وفتح الحزمة..." },
-                { p: 60, text: "جاري حقن التوكن، معرف المستخدم، والرابط المخصص..." },
+                { p: 60, text: "جاري حقن التوكن، المعرف، ورابط الواجهة الأساسية..." },
                 { p: 85, text: "جاري تطبيق المحاذاة zipalign والتوقيع..." },
                 { p: 98, text: "جاري إرسال النسخة عبر البوت وتجهيز التحميل..." }
             ];
@@ -521,10 +532,8 @@ def generate():
             if os.path.exists(f):
                 os.remove(f)
 
-        # نسخ التطبيق الأصلي للعمل عليه
         os.system(f"cp {BASE_APK} {modified_apk}")
 
-        # المسارات المباشرة داخل ملف الـ ZIP
         token_path_in_zip = 'assets/token.txt'
         id_path_in_zip = 'assets/id.txt'
         url_path_in_zip = 'assets/url.txt'
@@ -537,7 +546,6 @@ def generate():
                 url_exists = False
                 
                 for item in zin.infolist():
-                    # استبعاد التوقيعات القديمة لمنع التضارب
                     if item.filename.startswith('META-INF/'):
                         continue
                     if item.filename == token_path_in_zip:
@@ -562,10 +570,8 @@ def generate():
 
         os.replace(temp_zip, modified_apk)
 
-        # المحاذاة البرمجية zipalign
         subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check=True)
 
-        # توليد المفتاح تلقائياً إن لم يكن موجوداً
         global KEYSTORE
         if not os.path.exists(KEYSTORE):
             subprocess.run([
@@ -580,7 +586,6 @@ def generate():
                 '-dname', 'CN=g5wbot, OU=Dev, O=g5wbot, L=Riyadh, S=Riyadh, C=SA'
             ], check=True)
 
-        # التوقيع باستخدام apksigner
         sign_cmd = [
             'apksigner', 'sign',
             '--ks', KEYSTORE,
@@ -596,7 +601,6 @@ def generate():
         if result.returncode != 0:
             return f"فشل التوقيع بواسطة أداة apksigner: {result.stderr}", 500
 
-        # إرسال الملف للبوت في الخلفية
         if TELEGRAM_BOT_TOKEN and user_id and user_id != 'unknown':
             threading.Thread(target=send_apk_to_telegram, args=(user_id, signed_apk)).start()
 
@@ -607,4 +611,3 @@ def generate():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
