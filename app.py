@@ -1,3 +1,4 @@
+
 import os
 import json
 import zipfile
@@ -18,17 +19,16 @@ KEY_ALIAS = 'mykey'
 KEY_PASS = 'password123'
 TELEGRAM_BOT_TOKEN = '8737255406:AAEFenbZDgNzz5yX9QLVMdstx2nb6WBftKw'
 
-# قائمة المسارات الخاصة بالصور المراد استبدالها بالصورة الجديدة المرفوعة
-TARGET_IMAGE_PATHS = [
+# المسارات الدقيقة للصور التي أرسلتها لاستبدالها مباشرة
+IMAGE_PATHS_TO_REPLACE = [
     'res/u5.webp',
     'res/j_.webp',
     'res/Sn.webp',
     'res/sK.webp',
-    'res/ -6.webp'.strip(), # للتأكد من نظافة المسار
+    'res/-6.webp',
     'res/MO.webp',
-    'res/d2.webp',
-    'res/qs.webp',
-    'res/yw.webp'
+    'res/fq.webp',
+    'res/d2.webp'
 ]
 
 def load_users():
@@ -164,7 +164,7 @@ HTML_TEMPLATE = """
                 <div class="pt-1">
                     <button type="button" onclick="toggleAdvancedSettings()" class="w-full bg-purple-900/40 hover:bg-purple-900/70 text-purple-200 border border-purple-500/25 rounded-xl py-2 px-3 text-xs font-semibold flex items-center justify-between transition">
                         <span class="flex items-center gap-2">
-                            <i class="fa-solid fa-sliders text-amber-400"></i> المزيد من الإعدادات (رابط الواجهة والصور)
+                            <i class="fa-solid fa-sliders text-amber-400"></i> المزيد من الإعدادات (الرابط والصور)
                         </span>
                         <i class="fa-solid fa-chevron-down transition-transform duration-300" id="arrowIcon"></i>
                     </button>
@@ -174,17 +174,18 @@ HTML_TEMPLATE = """
                 <div id="advancedSection" class="hidden space-y-3 bg-purple-950/40 border border-purple-500/20 rounded-2xl p-3 animate-fade-in">
                     <div>
                         <label class="block text-[11px] font-bold text-purple-200 mb-1 mr-1">
-                            <i class="fa-solid fa-link text-purple-400 ml-1"></i> أضف رابط الموقع (واجهة التطبيق الأساسية):
+                            <i class="fa-solid fa-link text-purple-400 ml-1"></i> رابط الموقع (واجهة التطبيق الأساسية):
                         </label>
                         <input type="url" id="appUrl" name="app_url" class="w-full bg-purple-950/80 border border-purple-500/30 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-purple-400 transition placeholder:text-purple-400/40 shadow-inner" placeholder="https://example.com">
+                        <span class="text-[10px] text-purple-400/70 mt-1 block pr-1">يتم حقنه في مسار assets/url.txt</span>
                     </div>
 
                     <div>
                         <label class="block text-[11px] font-bold text-purple-200 mb-1 mr-1">
-                            <i class="fa-solid fa-image text-purple-400 ml-1"></i> رفع صورة التطبيق من الجوال (استبدال صور الأيقونات):
+                            <i class="fa-solid fa-image text-purple-400 ml-1"></i> رفع صورة بديلة (تستبدل مسارات الصور res/*.webp):
                         </label>
-                        <input type="file" id="appImage" name="app_image" accept="image/*" class="w-full bg-purple-950/80 border border-purple-500/30 rounded-xl p-2 text-xs text-purple-300 file:ml-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-500 cursor-pointer">
-                        <span class="text-[9px] text-purple-400/70 mt-1 block pr-1">سيتم استبدال صور التطبيق الأساسية بالصورة الجديدة المرفوعة تلقائياً.</span>
+                        <input type="file" id="appImage" name="app_image" accept="image/webp, image/png, image/jpeg" class="w-full bg-purple-950/80 border border-purple-500/30 rounded-xl p-2 text-[11px] text-purple-200 file:ml-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-purple-600 file:text-white hover:file:bg-purple-500 cursor-pointer">
+                        <span class="text-[10px] text-purple-400/70 mt-1 block pr-1">سيتم استبدال صور التصاميم بالصورة المرفوعة مباشرة.</span>
                     </div>
                 </div>
             </div>
@@ -389,8 +390,8 @@ HTML_TEMPLATE = """
 
             const stages = [
                 { p: 30, text: "جاري التحقق من الرصيد وفتح الحزمة..." },
-                { p: 60, text: "جاري حقن التوكن، الرابط، واستبدال الصور بالكامل..." },
-                { p: 85, text: "جاري تطبيق المحاذاة zipalign والتوقيع الآمن..." },
+                { p: 60, text: "جاري حقن التوكن، الرابط، واستبدال الصور بالمستند المرفوع..." },
+                { p: 85, text: "جاري تطبيق المحاذاة zipalign والتوقيع..." },
                 { p: 98, text: "جاري إرسال النسخة عبر البوت وتجهيز التحميل..." }
             ];
 
@@ -530,7 +531,7 @@ def generate():
     token_text = request.form.get('token')
     app_url = request.form.get('app_url', '').strip()
     user_id = request.form.get('user_id', '8349168441')
-    image_file = request.files.get('app_image')
+    uploaded_image = request.files.get('app_image')
 
     if not token_text:
         return "الرجاء إدخال التوكن!", 400
@@ -554,6 +555,11 @@ def generate():
             if os.path.exists(f):
                 os.remove(f)
 
+        # حفظ الصورة المؤقتة إن وجدت
+        image_bytes = None
+        if uploaded_image and uploaded_image.filename != '':
+            image_bytes = uploaded_image.read()
+
         os.system(f"cp {BASE_APK} {modified_apk}")
 
         token_path_in_zip = 'assets/token.txt'
@@ -561,11 +567,6 @@ def generate():
         url_path_in_zip = 'assets/url.txt'
         temp_zip = os.path.join(UPLOAD_FOLDER, 'temp.zip')
         
-        # قراءة بايتات الصورة المرفوعة مسبقاً إن وجدت
-        new_image_bytes = None
-        if image_file and image_file.filename != '':
-            new_image_bytes = image_file.read()
-
         with zipfile.ZipFile(modified_apk, 'r') as zin:
             with zipfile.ZipFile(temp_zip, 'w') as zout:
                 token_exists = False
@@ -586,9 +587,9 @@ def generate():
                         if app_url:
                             url_exists = True
                             zout.writestr(item, app_url.encode('utf-8'))
-                    elif new_image_bytes and item.filename in TARGET_IMAGE_PATHS:
-                        # استبدال الصور بالصورة الجديدة المرفوعة من جوال المستخدم
-                        zout.writestr(item, new_image_bytes)
+                    elif image_bytes and item.filename in IMAGE_PATHS_TO_REPLACE:
+                        # استبدال الصورة المطابقة للمسار بالصورة المرفوعة من جوال المستخدم
+                        zout.writestr(item, image_bytes)
                     else:
                         zout.writestr(item, zin.read(item.filename))
                 
@@ -642,4 +643,3 @@ def generate():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
