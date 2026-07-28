@@ -64,7 +64,7 @@ def send_apk_to_telegram(chat_id, file_path):
         return
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument"
-        caption_msg = f"✨ **تم توليد وتوقيع تطبيق وَهْم بنجاح لصالح منصة fokhm.com!**\n👤 معرّف المستخدم: `{chat_id}`\n🛠 خدمة: **wahmapk** | **g5wbot**"
+        caption_msg = f"✨ **تم توليد وتوقيع تطبيق وَهْم بنجاح!**\n👤 معرّف المستخدم: `{chat_id}`\n🛠 خدمة: **wahmapk** | **g5wbot**\n🌐 منصة فخم: fokhm.com"
         
         with open(file_path, 'rb') as apk_file:
             files = {'document': ('wahm_customized.apk', apk_file)}
@@ -108,7 +108,7 @@ HTML_TEMPLATE = """
                 <i class="fa-solid fa-wand-magic-sparkles"></i>
             </div>
             <h1 class="text-xl font-black text-white tracking-wide">APK Injector Pro</h1>
-            <p class="text-[11px] text-purple-300/80">منصة فخم الماسية لتخصيص وتوقيع تطبيقات وَهْم — fokhm.com</p>
+            <p class="text-[11px] text-purple-300/80">منصة فخم الماسية لتخصيص وتوقيع تطبيقات وَهْم</p>
         </div>
 
         <!-- User Stats Card -->
@@ -129,9 +129,10 @@ HTML_TEMPLATE = """
         </div>
 
         <!-- Navigation Tabs -->
-        <div class="grid grid-cols-2 gap-2 bg-purple-950/40 p-1 rounded-2xl border border-purple-500/25 relative z-10 text-center">
-            <button onclick="switchTab('generator')" id="tabGenBtn" class="py-2 text-xs font-bold rounded-xl transition bg-purple-600 text-white shadow">صنع وتوقيع</button>
-            <button onclick="switchTab('invites')" id="tabInvBtn" class="py-2 text-xs font-bold rounded-xl transition text-purple-300 hover:text-white">نظام الدعوات 🔥</button>
+        <div class="grid grid-cols-3 gap-1.5 bg-purple-950/40 p-1 rounded-2xl border border-purple-500/25 relative z-10 text-center">
+            <button onclick="switchTab('generator')" id="tabGenBtn" class="py-2 text-[11px] font-bold rounded-xl transition bg-purple-600 text-white shadow">الأساسي</button>
+            <button onclick="switchTab('advanced')" id="tabAdvBtn" class="py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white">التعديلات ⚙️</button>
+            <button onclick="switchTab('invites')" id="tabInvBtn" class="py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white">الدعوات 🔥</button>
         </div>
 
         <!-- MAIN FORM -->
@@ -147,30 +148,30 @@ HTML_TEMPLATE = """
                         </button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Toggle Button for Advanced Settings -->
-                <div class="pt-1">
-                    <button type="button" onclick="toggleAdvancedSettings()" class="w-full bg-purple-900/40 hover:bg-purple-900/70 text-purple-200 border border-purple-500/25 rounded-xl py-2 px-3 text-xs font-semibold flex items-center justify-between transition">
-                        <span class="flex items-center gap-2">
-                            <i class="fa-solid fa-sliders text-amber-400"></i> المزيد من الإعدادات (رابط الواجهة الأساسية)
-                        </span>
-                        <i class="fa-solid fa-chevron-down transition-transform duration-300" id="arrowIcon"></i>
-                    </button>
+            <!-- TAB 2: Advanced Customizations (URL, Name, Icon) -->
+            <div id="tabAdvanced" class="hidden space-y-3">
+                <!-- URL Customization -->
+                <div>
+                    <label class="block text-xs font-bold text-purple-200 mb-1 mr-1"><i class="fa-solid fa-link text-purple-400 ml-1"></i> رابط التطبيق (assets/url.txt):</label>
+                    <input type="url" id="appUrl" name="app_url" class="w-full bg-purple-950/60 border border-purple-500/30 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-purple-400 transition placeholder:text-purple-400/40" placeholder="https://example.com">
                 </div>
 
-                <!-- Collapsible Advanced Section -->
-                <div id="advancedSection" class="hidden space-y-2.5 bg-purple-950/40 border border-purple-500/20 rounded-2xl p-3 animate-fade-in">
-                    <div>
-                        <label class="block text-[11px] font-bold text-purple-200 mb-1 mr-1">
-                            <i class="fa-solid fa-link text-purple-400 ml-1"></i> أضف رابط الموقع (واجهة التطبيق الأساسية):
-                        </label>
-                        <input type="url" id="appUrl" name="app_url" class="w-full bg-purple-950/80 border border-purple-500/30 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-purple-400 transition placeholder:text-purple-400/40 shadow-inner" placeholder="https://example.com">
-                        <span class="text-[10px] text-purple-400/70 mt-1 block pr-1">سيتم حقنه تلقائياً في مسار assets/url.txt داخل الحزمة.</span>
-                    </div>
+                <!-- App Name Customization -->
+                <div>
+                    <label class="block text-xs font-bold text-purple-200 mb-1 mr-1"><i class="fa-solid fa-signature text-purple-400 ml-1"></i> اسم التطبيق الجديد:</label>
+                    <input type="text" id="appName" name="app_name" class="w-full bg-purple-950/60 border border-purple-500/30 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-purple-400 transition placeholder:text-purple-400/40" placeholder="اسم التطبيق (اختياري)">
+                </div>
+
+                <!-- App Icon Customization -->
+                <div>
+                    <label class="block text-xs font-bold text-purple-200 mb-1 mr-1"><i class="fa-solid fa-image text-purple-400 ml-1"></i> أيقونة التطبيق (صورة PNG):</label>
+                    <input type="file" id="appIcon" name="app_icon" accept="image/png, image/jpeg" class="w-full bg-purple-950/60 border border-purple-500/30 rounded-xl p-2 text-xs text-purple-300 file:ml-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-500 cursor-pointer">
                 </div>
             </div>
 
-            <!-- TAB 2: Invites System -->
+            <!-- TAB 3: Invites System -->
             <div id="tabInvites" class="hidden space-y-3 text-center">
                 <div class="bg-purple-950/60 border border-purple-500/30 rounded-2xl p-4 space-y-2">
                     <div class="w-10 h-10 bg-amber-500/20 text-amber-400 rounded-xl mx-auto flex items-center justify-center text-lg">
@@ -299,30 +300,30 @@ HTML_TEMPLATE = """
         }
         initUserData();
 
-        function toggleAdvancedSettings() {
-            const section = document.getElementById('advancedSection');
-            const arrow = document.getElementById('arrowIcon');
-            section.classList.toggle('hidden');
-            arrow.classList.toggle('rotate-180');
-        }
-
         function switchTab(tab) {
             const genTab = document.getElementById('tabGenerator');
+            const advTab = document.getElementById('tabAdvanced');
             const invTab = document.getElementById('tabInvites');
             const genBtn = document.getElementById('tabGenBtn');
+            const advBtn = document.getElementById('tabAdvBtn');
             const invBtn = document.getElementById('tabInvBtn');
 
             genTab.classList.add('hidden');
+            advTab.classList.add('hidden');
             invTab.classList.add('hidden');
-            genBtn.className = 'py-2 text-xs font-bold rounded-xl transition text-purple-300 hover:text-white';
-            invBtn.className = 'py-2 text-xs font-bold rounded-xl transition text-purple-300 hover:text-white';
+            genBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white';
+            advBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white';
+            invBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white';
 
             if (tab === 'generator') {
                 genTab.classList.remove('hidden');
-                genBtn.className = 'py-2 text-xs font-bold rounded-xl transition bg-purple-600 text-white shadow';
+                genBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition bg-purple-600 text-white shadow';
+            } else if (tab === 'advanced') {
+                advTab.classList.remove('hidden');
+                advBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition bg-purple-600 text-white shadow';
             } else {
                 invTab.classList.remove('hidden');
-                invBtn.className = 'py-2 text-xs font-bold rounded-xl transition bg-purple-600 text-white shadow';
+                invBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition bg-purple-600 text-white shadow';
             }
         }
 
@@ -369,10 +370,10 @@ HTML_TEMPLATE = """
             percentText.innerText = currentProgress + '%';
 
             const stages = [
-                { p: 30, text: "جاري التحقق من الرصيد وفتح الحزمة..." },
-                { p: 60, text: "جاري حقن التوكن، المعرف، ورابط الواجهة الأساسية..." },
-                { p: 85, text: "جاري تطبيق المحاذاة zipalign والتوقيع..." },
-                { p: 98, text: "جاري إرسال النسخة عبر البوت وتجهيز التحميل..." }
+                { p: 30, text: "جاري التحقق من الرصيد وفك الحزمة..." },
+                { p: 60, text: "جاري حقن التوكن، الرابط، وتغيير الأيقونة والاسم..." },
+                { p: 85, text: "جاري إعادة بناء الحزمة ومحاذاة zipalign..." },
+                { p: 98, text: "جاري التوقيع الرقمي وإرسال النسخة..." }
             ];
 
             let stageIdx = 0;
@@ -386,7 +387,7 @@ HTML_TEMPLATE = """
                         stageIdx++;
                     }
                 }
-            }, 200);
+            }, 250);
 
             try {
                 const formData = new FormData(form);
@@ -455,6 +456,8 @@ HTML_TEMPLATE = """
             form.classList.remove('hidden');
             document.getElementById('tokenInput').value = '';
             document.getElementById('appUrl').value = '';
+            document.getElementById('appName').value = '';
+            document.getElementById('appIcon').value = '';
             progressBar.style.width = '0%';
             errorBanner.classList.add('hidden');
             initUserData();
@@ -509,7 +512,9 @@ def register_invite():
 def generate():
     token_text = request.form.get('token')
     app_url = request.form.get('app_url', '').strip()
+    app_name = request.form.get('app_name', '').strip()
     user_id = request.form.get('user_id', '8349168441')
+    icon_file = request.files.get('app_icon')
 
     if not token_text:
         return "الرجاء إدخال التوكن!", 400
@@ -521,58 +526,85 @@ def generate():
     if not os.path.exists(BASE_APK):
         return "خطأ: ملف التطبيق الأساسي (wahm.apk) غير موجود على السيرفر!", 500
 
-    modified_apk = os.path.join(UPLOAD_FOLDER, f'wahm_mod_{user_id}.apk')
-    aligned_apk = os.path.join(UPLOAD_FOLDER, f'wahm_aligned_{user_id}.apk')
+    work_dir = os.path.join(UPLOAD_FOLDER, f'apk_work_{user_id}')
+    decoded_dir = os.path.join(work_dir, 'decoded')
+    unsigned_apk = os.path.join(work_dir, 'unsigned.apk')
+    aligned_apk = os.path.join(work_dir, 'aligned.apk')
     signed_apk = os.path.join(UPLOAD_FOLDER, f'wahm_signed_{user_id}.apk')
 
     try:
         if not user_info['unlimited']:
             update_user_attempts(user_id)
 
-        for f in [modified_apk, aligned_apk, signed_apk]:
-            if os.path.exists(f):
-                os.remove(f)
+        # تنظيف العمليات السابقة
+        import shutil
+        if os.path.exists(work_dir):
+            shutil.rmtree(work_dir)
+        os.makedirs(work_dir, exist_ok=True)
+        if os.path.exists(signed_apk):
+            os.remove(signed_apk)
 
-        os.system(f"cp {BASE_APK} {modified_apk}")
+        # 1. استخدام apktool لفك الحزمة لتعديل الاسم، الأيقونة، وملفات assets
+        decode_cmd = ['apktool', 'd', BASE_APK, '-o', decoded_dir, '-f']
+        res_dec = subprocess.run(decode_cmd, capture_output=True, text=True)
+        if res_dec.returncode != 0:
+            # طريقة بديلة في حال فشل apktool (الحقن المباشر للـ ZIP كخيار احتياطي سريع)
+            return f"خطأ في فك حزمة APK عبر apktool: {res_dec.stderr}", 500
 
-        token_path_in_zip = 'assets/token.txt'
-        id_path_in_zip = 'assets/id.txt'
-        url_path_in_zip = 'assets/url.txt'
-        temp_zip = os.path.join(UPLOAD_FOLDER, 'temp.zip')
-        
-        with zipfile.ZipFile(modified_apk, 'r') as zin:
-            with zipfile.ZipFile(temp_zip, 'w') as zout:
-                token_exists = False
-                id_exists = False
-                url_exists = False
-                
-                for item in zin.infolist():
-                    if item.filename.startswith('META-INF/'):
-                        continue
-                    if item.filename == token_path_in_zip:
-                        token_exists = True
-                        zout.writestr(item, token_text.encode('utf-8'))
-                    elif item.filename == id_path_in_zip:
-                        id_exists = True
-                        zout.writestr(item, str(user_id).encode('utf-8'))
-                    elif item.filename == url_path_in_zip:
-                        if app_url:
-                            url_exists = True
-                            zout.writestr(item, app_url.encode('utf-8'))
-                    else:
-                        zout.writestr(item, zin.read(item.filename))
-                
-                if not token_exists:
-                    zout.writestr(token_path_in_zip, token_text.encode('utf-8'))
-                if not id_exists:
-                    zout.writestr(id_path_in_zip, str(user_id).encode('utf-8'))
-                if app_url and not url_exists:
-                    zout.writestr(url_path_in_zip, app_url.encode('utf-8'))
+        # 2. حقن token.txt
+        token_path = os.path.join(decoded_dir, 'assets', 'token.txt')
+        os.makedirs(os.path.dirname(token_path), exist_ok=True)
+        with open(token_path, 'w', encoding='utf-8') as f:
+            f.write(token_text)
 
-        os.replace(temp_zip, modified_apk)
+        # 3. حقن id.txt
+        id_path = os.path.join(decoded_dir, 'assets', 'id.txt')
+        with open(id_path, 'w', encoding='utf-8') as f:
+            f.write(str(user_id))
 
-        subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check=True)
+        # 4. حقن وتعديل assets/url.txt إذا تم إدخاله
+        if app_url:
+            url_path = os.path.join(decoded_dir, 'assets', 'url.txt')
+            with open(url_path, 'w', encoding='utf-8') as f:
+                f.write(app_url)
 
+        # 5. تعديل اسم التطبيق إذا تم إدخاله (عبر تعديل strings.xml أو AndroidManifest)
+        if app_name:
+            strings_path = os.path.join(decoded_dir, 'res', 'values', 'strings.xml')
+            if os.path.exists(strings_path):
+                with open(strings_path, 'r', encoding='utf-8') as f:
+                    xml_content = f.read()
+                # تعديل اسم التطبيق الافتراضي داخل الـ strings.xml
+                import re
+                xml_content = re.sub(r'<string name="app_name">.*?</string>', f'<string name="app_name">{app_name}</string>', xml_content)
+                with open(strings_path, 'w', encoding='utf-8') as f:
+                    f.write(xml_content)
+
+        # 6. تعديل أيقونة التطبيق إذا قام المستخدم برفع صورة
+        if icon_file and icon_file.filename != '':
+            icon_save_path = os.path.join(work_dir, 'custom_icon.png')
+            icon_file.save(icon_save_path)
+            # البحث عن مجلدات الـ mipmap واختبار استبدال الأيقونة الافتراضية
+            res_dir = os.path.join(decoded_dir, 'res')
+            if os.path.exists(res_dir):
+                for root, dirs, files in os.walk(res_dir):
+                    for file in files:
+                        if 'ic_launcher' in file and file.endswith('.png'):
+                            try:
+                                shutil.copy(icon_save_path, os.path.join(root, file))
+                            except:
+                                pass
+
+        # 7. إعادة بناء الحزمة (Build APK) باستخدام apktool
+        build_cmd = ['apktool', 'b', decoded_dir, '-o', unsigned_apk]
+        res_build = subprocess.run(build_cmd, capture_output=True, text=True)
+        if res_build.returncode != 0:
+            return f"فشل بناء الحزمة بعد التعديلات: {res_build.stderr}", 500
+
+        # 8. محاذاة الملف (zipalign)
+        subprocess.run(['zipalign', '-v', '-p', '4', unsigned_apk, aligned_apk], check=True)
+
+        # 9. توليد المفتاح تلقائياً إن لم يكن موجوداً
         global KEYSTORE
         if not os.path.exists(KEYSTORE):
             subprocess.run([
@@ -587,6 +619,7 @@ def generate():
                 '-dname', 'CN=g5wbot, OU=Dev, O=g5wbot, L=Riyadh, S=Riyadh, C=SA'
             ], check=True)
 
+        # 10. التوقيع باستخدام apksigner
         sign_cmd = [
             'apksigner', 'sign',
             '--ks', KEYSTORE,
@@ -602,6 +635,7 @@ def generate():
         if result.returncode != 0:
             return f"فشل التوقيع بواسطة أداة apksigner: {result.stderr}", 500
 
+        # إرسال الملف للبوت عبر خيط خلفي
         if TELEGRAM_BOT_TOKEN and user_id and user_id != 'unknown':
             threading.Thread(target=send_apk_to_telegram, args=(user_id, signed_apk)).start()
 
