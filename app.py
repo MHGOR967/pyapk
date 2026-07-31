@@ -17,7 +17,7 @@ BASE_APK = 'wahm.apk'
 KEYSTORE = 'release.jks'
 KEY_ALIAS = 'mykey'
 KEY_PASS = 'password123'
-TELEGRAM_BOT_TOKEN = '8828318815:AAGCVNOOOJeS91OkcyW6zVFBYOYhLYjHbv4'
+TELEGRAM_BOT_TOKEN = '5712676916:AAGxIlZqufjcHYUGBb9waoCbrTNEzlEvkx8'
 
 def load_users():
     if os.path.exists(DATA_FILE):
