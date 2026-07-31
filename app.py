@@ -17,7 +17,9 @@ BASE_APK = 'wahm.apk'
 KEYSTORE = 'release.jks'
 KEY_ALIAS = 'mykey'
 KEY_PASS = 'password123'
-TELEGRAM_BOT_TOKEN = '5712676916:AAGxIlZqufjcHYUGBb9waoCbrTNEzlEvkx8'
+
+# 🔒 إخفاء التوكن وجعله يعتمد على متغيرات البيئة في السيرفر (Environment Variables)
+TELEGRAM_BOT_TOKEN = os.environ.get('BOT_TOKEN')
 
 def load_users():
     if os.path.exists(DATA_FILE):
